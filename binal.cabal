@@ -1,0 +1,49 @@
+name:           binal
+version:        0.0.1
+cabal-version:  >= 1.8
+build-type:     Simple
+license:        MIT
+license-file:   LICENSE
+copyright:      Copyright (C) 2014 Pasberth
+homepage:       https://github.com/pasberth/binal
+bug-reports:    https://github.com/pasberth/binal/issues
+author:         Pasberth
+maintainer:     Pasberth <pasberth@gmail.com>
+stability:      experimental
+synopsis:       Yet another alternative javascript
+description:
+  TODO
+
+category:       Language
+
+library
+  ghc-options:    -Wall -Werror -O2
+  build-depends:
+      base
+    , mtl
+    , lens
+    , unordered-containers
+    , utf8-string
+    , trifecta
+    , ansi-terminal
+    , haskeline
+  exposed-modules:
+      Language.Binal
+    , Language.Binal.PrettyPrint
+    , Language.Binal.Types
+    , Language.Binal.Util
+    , Language.Binal.Util.Constants
+    , Language.Binal.Util.LitKind
+    , Language.Binal.Util.AST
+    , Language.Binal.Parser
+    , Language.Binal.Verifier
+    , Language.Binal.CLI
+    , Language.Binal.REPL
+
+executable binal
+  hs-source-dirs: Executable
+  main-is: binal.hs
+  ghc-options: -Wall -Werror -O2
+  build-depends:
+      base
+    , binal

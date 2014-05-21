@@ -1,5 +1,6 @@
 module Language.Binal.Types where
 
+import           Control.Monad.State
 import qualified Data.List as List
 import qualified Data.HashMap.Strict as HashMap
 
@@ -50,6 +51,8 @@ type Variable = Int
 
 type TypeEnv = HashMap.HashMap String TyKind
 
+type TypeInferer a = State (TypeEnv, [Variable], [Constraint]) a
+
 data TyKind
   = VarTy Variable
   | SymTy
@@ -79,5 +82,7 @@ data SyntaxError
       Where
 
 data NotInScope = NotInScope String Where
+
+data Constraint = Equal TyKind TyKind
 
 data Absurd = UnexpectedType TyKind TyKind Where

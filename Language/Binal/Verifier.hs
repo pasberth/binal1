@@ -1,5 +1,6 @@
 module Language.Binal.Verifier where
 
+import           Control.Monad
 import           Control.Monad.State
 import           Control.Lens
 import qualified Data.Maybe           as Maybe
@@ -80,14 +81,20 @@ examineNames' (List xs _) = do
 examineNames :: AST -> [NotInScope]
 examineNames ast = evalState (examineNames' ast) Util.primitives
 
-inferTypeOfParams :: AST -> State (TypeEnv, [Variable]) TypedAST
+gensym :: TypeInferer Variable
+gensym = do
+  var <- uses _2 head
+  _2 %= tail
+  return var
+
+inferTypeOfParams :: AST -> TypeInferer TypedAST
 inferTypeOfParams x@(Lit _ _) = inferType' x
 inferTypeOfParams (List xs pos) = do
   xs' <- mapM inferTypeOfParams xs
   let ty = ListTy (map Util.typeof xs')
   return (TyList xs' ty pos)
 
-inferType' :: AST -> State (TypeEnv, [Variable]) TypedAST
+inferType' :: AST -> TypeInferer TypedAST
 inferType' (Lit lit@(SymLit s) pos) = do
   env <- use _1
   let ty = Maybe.fromJust (HashMap.lookup s env)
@@ -96,16 +103,16 @@ inferType' (Lit lit@(StrLit _) pos) = return (TyLit lit StrTy pos)
 inferType' (Lit lit@(IntLit _) pos) = return (TyLit lit IntTy pos)
 inferType' (Lit lit@(NumLit _) pos) = return (TyLit lit NumTy pos)
 inferType' (List xs pos) = do
-  env <- use _1
-  varList <- use _2
   let instr = xs !! 0
   case instr of
     Lit (SymLit "lambda") pos1 -> do
       let params = xs !! 1
       let body = xs !! 2
       let syms = Util.flatSymbols params
-      let env' = foldl (\e (sym,var) -> HashMap.insert sym (VarTy var) e) env (zip syms varList)
-      _1 .= env'
+      env <- use _1
+      forM_ syms $ \sym -> do
+        var <- gensym
+        _1 %= HashMap.insert sym (VarTy var)
       typedBody <- inferType' body
       typedParams <- inferTypeOfParams params
       _1 .= env
@@ -119,7 +126,16 @@ inferType' (List xs pos) = do
                 (TyLit (SymLit "seq") SymTy pos1:xs')
                 (Util.typeof (last xs'))
                 pos)
-    _ -> undefined
+    _ -> do
+      let func = head xs
+      let args = tail xs
+      typedFunc <- inferType' func
+      typedArgs <- mapM inferType' args
+      let funcTy = Util.typeof typedFunc
+      let argsTy = ListTy (map Util.typeof typedArgs)
+      x <- gensym
+      _3 %= (Equal funcTy (ArrTy argsTy (VarTy x)):)
+      return (TyList (typedFunc:typedArgs) (VarTy x) pos)
 
 inferType :: AST -> TypedAST
-inferType ast = evalState (inferType' ast) (Util.initialTypeEnv, Util.infiniteVarList)
+inferType ast = evalState (inferType' ast) (Util.initialTypeEnv, Util.infiniteVarList, [])

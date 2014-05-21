@@ -1,6 +1,7 @@
 module Language.Binal.Util.Constants where
 
 import qualified Data.HashSet        as HashSet
+import           Language.Binal.Types
 
 keywords :: HashSet.HashSet String
 keywords = HashSet.fromList
@@ -17,5 +18,5 @@ primitives = HashSet.fromList
               , "apply@"
               ]
 
-infiniteVarList :: [Int]
+infiniteVarList :: [Variable]
 infiniteVarList = [0..]

@@ -15,8 +15,7 @@ data Where
       Int       -- ^ columnno
       Int       -- ^ lineno of end
       Int       -- ^ columnno of end
-      String    -- ^ the contents of the current line (from the beginning of the line) 
-  deriving (Show)
+      String    -- ^ the contents of the current line (from the beginning of the line)
 
 data LitKind
   = SymLit String
@@ -41,22 +40,15 @@ instance Show AST where
 data TypedAST
   = TyLit LitKind TyKind Where
   | TyList [TypedAST] Where
-  | TyApp TypedAST [TypedAST] TyKind Where
-  | TyAbs TypedAST TypedAST Where
-  | TySeq [TypedAST] Where
-  | TyLet TypedAST TypedAST Where
 
 instance Show TypedAST where
   show (TyLit lit ty _) = show lit ++ ":" ++ show ty
   show (TyList xs _) = "(" ++ concat (List.intersperse " " (map show xs)) ++ ")"
-  show (TyApp func args _ _) = "(" ++ concat (List.intersperse " " (map show (func:args))) ++ ")"
-  show (TyAbs params body _) = "(" ++ concat (List.intersperse " " ("lambda":(map show [params,body]))) ++ ")"
-  show (TySeq exprs _) = "(" ++ concat (List.intersperse " " ("seq":(map show exprs))) ++ ")"
-  show (TyLet pattern value _) = "(" ++ concat (List.intersperse " " ("let":(map show [pattern,value]))) ++ ")"
+
+type Variable = Int
 
 data TyKind
-  = VarTy Int -- type variable
-  | PVarTy Int -- polymorphic type variable
+  = VarTy Variable
   | StrTy
   | IntTy
   | NumTy
@@ -66,7 +58,6 @@ data TyKind
 
 instance Show TyKind where
   show (VarTy i) = "'_" ++ show i
-  show (PVarTy i) = "'" ++ show i
   show StrTy = "string"
   show IntTy = "int"
   show NumTy = "number"
@@ -81,9 +72,7 @@ data SyntaxError
       Int -- ^ expected
       Int -- ^ actual
       Where
-  deriving (Show)
 
 data NotInScope = NotInScope String Where
-  deriving (Show)
 
 data Absurd = UnexpectedType TyKind TyKind Where

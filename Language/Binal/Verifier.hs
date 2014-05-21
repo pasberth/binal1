@@ -1,5 +1,6 @@
 module Language.Binal.Verifier where
 
+import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.State
 import           Control.Lens
@@ -93,6 +94,29 @@ makePoly = Util.traverseTyKindM
               VarTy i -> _4 %= HashSet.insert i
               _ -> return ())
 
+freshPoly' :: TyKind -> StateT (HashMap.HashMap Variable Variable) (State (TypeEnv, [Variable], [Constraint], HashSet.HashSet Variable)) TyKind
+freshPoly' (VarTy i) = do
+  isPoly <- lift (uses _4 (HashSet.member i))
+  if isPoly
+    then do
+      polys <- get
+      case HashMap.lookup i polys of
+        Just poly -> return (VarTy poly)
+        Nothing -> do
+          var <- lift gensym
+          modify (HashMap.insert i var)
+          return (VarTy var)
+    else return (VarTy i)
+freshPoly' SymTy = return SymTy
+freshPoly' StrTy = return StrTy
+freshPoly' IntTy = return IntTy
+freshPoly' NumTy = return NumTy
+freshPoly' (ArrTy x y) = ArrTy <$> freshPoly' x <*> freshPoly' y
+freshPoly' (ListTy tys) = ListTy <$> mapM freshPoly' tys
+
+freshPoly :: TyKind -> TypeInferer TyKind
+freshPoly ty = evalStateT (freshPoly' ty) HashMap.empty
+
 unifyEnv :: TypeInferer ()
 unifyEnv = do
   env <- use _1
@@ -109,7 +133,7 @@ inferTypeOfParams (List xs pos) = do
 inferType' :: AST -> TypeInferer TypedAST
 inferType' (Lit lit@(SymLit s) pos) = do
   env <- use _1
-  let ty = Maybe.fromJust (HashMap.lookup s env)
+  ty <- freshPoly (Maybe.fromJust (HashMap.lookup s env))
   return (TyLit lit ty pos)
 inferType' (Lit lit@(StrLit _) pos) = return (TyLit lit StrTy pos)
 inferType' (Lit lit@(IntLit _) pos) = return (TyLit lit IntTy pos)

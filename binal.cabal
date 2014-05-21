@@ -34,6 +34,7 @@ library
     , Language.Binal.Util
     , Language.Binal.Util.Constants
     , Language.Binal.Util.LitKind
+    , Language.Binal.Util.TyKind
     , Language.Binal.Util.AST
     , Language.Binal.Util.TypedAST
     , Language.Binal.Parser

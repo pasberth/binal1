@@ -138,4 +138,45 @@ inferType' (List xs pos) = do
       return (TyList (typedFunc:typedArgs) (VarTy x) pos)
 
 inferType :: AST -> TypedAST
-inferType ast = evalState (inferType' ast) (Util.initialTypeEnv, Util.infiniteVarList, [])
+inferType ast = do
+  let (typedAST, (_, _, constraints)) = runState (inferType' ast) (Util.initialTypeEnv, Util.infiniteVarList, [])
+  Util.mapTyKind (unify constraints) typedAST
+
+subst :: Variable -> TyKind -> TyKind -> TyKind
+subst i x y@(VarTy j)
+  | i == j = x
+  | otherwise = y
+subst _ _ SymTy = SymTy
+subst _ _ StrTy = StrTy
+subst _ _ IntTy = IntTy
+subst _ _ NumTy = NumTy
+subst i x (ArrTy y z) = ArrTy (subst i x y) (subst i x z)
+subst i x (ListTy xs) = ListTy (map (subst i x) xs)
+
+substConstraint :: Variable -> TyKind -> Constraint -> Constraint
+substConstraint i y (Equal ty1 ty2) = Equal (subst i y ty1) (subst i y ty2)
+
+unify :: [Constraint] -> TyKind -> TyKind
+unify [] = id
+unify (Equal s t:c)
+  | s == t = unify c
+  | otherwise = do
+    let tmp1 = Util.extractVarTy s
+    let tmp2 = Util.extractVarTy t
+    let i = Maybe.fromJust tmp1
+    let j = Maybe.fromJust tmp2
+    if Maybe.isJust tmp1 && not (elem i (Util.freeVariables t))
+      then unify (map (substConstraint i t) c) . subst i t
+      else
+        if Maybe.isJust tmp2 && not (elem j (Util.freeVariables s))
+          then unify (map (substConstraint j s) c) . subst j s
+          else
+            case (s, t) of
+              (ArrTy s1 s2, ArrTy t1 t2) ->
+                unify (Equal s1 t1:Equal s2 t2:c)
+              (ListTy xs, ListTy ys)
+                | length xs == length ys ->
+                  unify (map (uncurry Equal) (zip xs ys) ++ c)
+                | otherwise ->
+                  unify c
+              _ -> id

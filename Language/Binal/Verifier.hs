@@ -122,4 +122,4 @@ inferType' (List xs pos) = do
     _ -> undefined
 
 inferType :: AST -> TypedAST
-inferType ast = evalState (inferType' ast) (HashMap.empty, Util.infiniteVarList)
+inferType ast = evalState (inferType' ast) (Util.initialTypeEnv, Util.infiniteVarList)

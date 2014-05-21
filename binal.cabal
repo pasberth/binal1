@@ -35,6 +35,7 @@ library
     , Language.Binal.Util.Constants
     , Language.Binal.Util.LitKind
     , Language.Binal.Util.AST
+    , Language.Binal.Util.TypedAST
     , Language.Binal.Parser
     , Language.Binal.Verifier
     , Language.Binal.CLI

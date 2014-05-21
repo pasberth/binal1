@@ -1,7 +1,10 @@
 module Language.Binal.Verifier where
 
 import           Control.Monad.State
+import           Control.Lens
+import qualified Data.Maybe           as Maybe
 import qualified Data.HashSet        as HashSet
+import qualified Data.HashMap.Strict as HashMap
 import           Language.Binal.Types
 import qualified Language.Binal.Util as Util
 
@@ -76,3 +79,40 @@ examineNames' (List xs _) = do
 
 examineNames :: AST -> [NotInScope]
 examineNames ast = evalState (examineNames' ast) Util.primitives
+
+inferType' :: AST -> State (TypeEnv, [Variable]) TypedAST
+inferType' (Lit lit@(SymLit s) pos) = do
+  env <- use _1
+  let ty = Maybe.fromJust (HashMap.lookup s env)
+  return (TyLit lit ty pos)
+inferType' (Lit lit@(StrLit _) pos) = return (TyLit lit StrTy pos)
+inferType' (Lit lit@(IntLit _) pos) = return (TyLit lit IntTy pos)
+inferType' (Lit lit@(NumLit _) pos) = return (TyLit lit NumTy pos)
+inferType' (List xs pos) = do
+  env <- use _1
+  varList <- use _2
+  let instr = xs !! 0
+  case instr of
+    Lit (SymLit "lambda") pos1 -> do
+      let params = xs !! 1
+      let body = xs !! 2
+      let syms = Util.flatSymbols params
+      let env' = foldl (\e (sym,var) -> HashMap.insert sym (VarTy var) e) env (zip syms varList)
+      _1 .= env'
+      typedBody <- inferType' body
+      typedParams <- inferType' params
+      _1 .= env
+      return (TyList
+                [TyLit (SymLit "lambda") SymTy pos1, typedParams, typedBody]
+                (ArrTy (Util.typeof typedParams) (Util.typeof typedBody))
+                pos)
+    Lit (SymLit "seq") pos1 -> do
+      xs' <- mapM inferType' (tail xs)
+      return (TyList
+                (TyLit (SymLit "seq") SymTy pos1:xs')
+                (Util.typeof (last xs'))
+                pos)
+    _ -> undefined
+
+inferType :: AST -> TypedAST
+inferType ast = evalState (inferType' ast) (HashMap.empty, Util.infiniteVarList)

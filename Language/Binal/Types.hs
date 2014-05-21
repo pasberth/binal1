@@ -1,6 +1,7 @@
 module Language.Binal.Types where
 
 import qualified Data.List as List
+import qualified Data.HashMap.Strict as HashMap
 
 data Where
   = AtFile      -- inputs from a named file.
@@ -39,16 +40,19 @@ instance Show AST where
 
 data TypedAST
   = TyLit LitKind TyKind Where
-  | TyList [TypedAST] Where
+  | TyList [TypedAST] TyKind Where
 
 instance Show TypedAST where
   show (TyLit lit ty _) = show lit ++ ":" ++ show ty
-  show (TyList xs _) = "(" ++ concat (List.intersperse " " (map show xs)) ++ ")"
+  show (TyList xs ty _) = "(" ++ concat (List.intersperse " " (map show xs)) ++ "):" ++ show ty
 
 type Variable = Int
 
+type TypeEnv = HashMap.HashMap String TyKind
+
 data TyKind
   = VarTy Variable
+  | SymTy
   | StrTy
   | IntTy
   | NumTy
@@ -58,6 +62,7 @@ data TyKind
 
 instance Show TyKind where
   show (VarTy i) = "'_" ++ show i
+  show SymTy = "symbol"
   show StrTy = "string"
   show IntTy = "int"
   show NumTy = "number"

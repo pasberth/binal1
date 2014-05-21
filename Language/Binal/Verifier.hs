@@ -169,7 +169,11 @@ inferType' (List xs pos) = do
       let argsTy = ListTy (map Util.typeof typedArgs)
       x <- gensym
       _3 %= (Equal funcTy (ArrTy argsTy (VarTy x)):)
-      return (TyList (typedFunc:typedArgs) (VarTy x) pos)
+      unifyEnv
+      constraints <- use _3
+      let unifiedFunc = Util.mapTyKind (unify constraints) typedFunc
+      let unifiedArgs = map (Util.mapTyKind (unify constraints)) typedArgs
+      return (TyList (unifiedFunc:unifiedArgs) (VarTy x) pos)
 
 inferType :: AST -> TypedAST
 inferType ast = evalState (inferType' ast) (Util.initialTypeEnv, Util.infiniteVarList, [], HashSet.empty)

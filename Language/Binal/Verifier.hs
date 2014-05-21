@@ -80,6 +80,13 @@ examineNames' (List xs _) = do
 examineNames :: AST -> [NotInScope]
 examineNames ast = evalState (examineNames' ast) Util.primitives
 
+inferTypeOfParams :: AST -> State (TypeEnv, [Variable]) TypedAST
+inferTypeOfParams x@(Lit _ _) = inferType' x
+inferTypeOfParams (List xs pos) = do
+  xs' <- mapM inferTypeOfParams xs
+  let ty = ListTy (map Util.typeof xs')
+  return (TyList xs' ty pos)
+
 inferType' :: AST -> State (TypeEnv, [Variable]) TypedAST
 inferType' (Lit lit@(SymLit s) pos) = do
   env <- use _1
@@ -100,7 +107,7 @@ inferType' (List xs pos) = do
       let env' = foldl (\e (sym,var) -> HashMap.insert sym (VarTy var) e) env (zip syms varList)
       _1 .= env'
       typedBody <- inferType' body
-      typedParams <- inferType' params
+      typedParams <- inferTypeOfParams params
       _1 .= env
       return (TyList
                 [TyLit (SymLit "lambda") SymTy pos1, typedParams, typedBody]

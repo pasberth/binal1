@@ -197,7 +197,7 @@ inferType' (List xs pos) = do
       constraints <- use _3
       let unifiedFunc = Util.mapTyKind (unify constraints) typedFunc
       let unifiedArgs = map (Util.mapTyKind (unify constraints)) typedArgs
-      return (TyList (unifiedFunc:unifiedArgs) (VarTy x) pos)
+      return (Util.mapTyKind (unify constraints) (TyList (unifiedFunc:unifiedArgs) (VarTy x) pos))
 
 inferType :: AST -> TypedAST
 inferType ast = evalState (inferType' ast) (Util.initialTypeEnv, Util.infiniteVarList, [], HashSet.empty)

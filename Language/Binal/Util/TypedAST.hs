@@ -13,3 +13,7 @@ mapTyKind f (TyList xs ty pos) = TyList (map (mapTyKind f) xs) (f ty) pos
 traverseTyKindM :: Monad m => (TyKind -> m ()) -> TypedAST -> m ()
 traverseTyKindM f (TyLit _ ty _) = f ty
 traverseTyKindM f (TyList xs ty _) = f ty >> mapM_ (traverseTyKindM f) xs
+
+whereIs :: TypedAST -> Where
+whereIs (TyLit _ _ pos) = pos
+whereIs (TyList _ _ pos) = pos

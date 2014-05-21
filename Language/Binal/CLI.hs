@@ -11,7 +11,12 @@ checkAST ast = do
       case V.examineNames ast of
         [] -> do
           let typedAST = V.inferType ast
-          return (Just typedAST)
+          case V.examineAbsurds typedAST of
+            [] ->
+              return (Just typedAST)
+            errs -> do
+            mapM_ PP.prettyANSIAbsurd errs
+            return Nothing
         errs -> do
           mapM_ PP.prettyANSINotInScope errs
           return Nothing

@@ -10,3 +10,7 @@ flatLitKinds (List xs _) = concatMap flatLitKinds xs
 
 flatSymbols :: AST -> [String]
 flatSymbols = Maybe.catMaybes . map LitKind.extractSym . flatLitKinds
+
+whereIsAST :: AST -> Where
+whereIsAST (Lit _ pos) = pos
+whereIsAST (List _ pos) = pos

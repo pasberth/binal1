@@ -212,3 +212,25 @@ unify (Equal s t:c)
                 | otherwise ->
                   unify c
               _ -> id
+
+examineAbsurds :: TypedAST -> [Absurd]
+examineAbsurds (TyLit _ _ _) = []
+examineAbsurds (TyList xs _ pos) = do
+  let instr = xs !! 0
+  case instr of
+    TyLit (SymLit "lambda") _ _ -> do
+      let body = xs !! 2
+      examineAbsurds body
+    TyLit (SymLit "seq") _ _ -> do
+      concatMap examineAbsurds (tail xs)
+    _ -> do
+      let func = instr
+      let args = tail xs
+      let funcTy = Util.typeof func
+      let argsTy = ListTy (map Util.typeof args)
+      case funcTy of
+        ArrTy srcTy _ -> do
+          if srcTy == argsTy
+            then examineAbsurds func ++ concatMap examineAbsurds args
+            else [UnexpectedType srcTy argsTy pos]
+        _ -> []

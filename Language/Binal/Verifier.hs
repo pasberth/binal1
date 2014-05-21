@@ -87,6 +87,18 @@ gensym = do
   _2 %= tail
   return var
 
+makePoly :: TypedAST -> TypeInferer ()
+makePoly = Util.traverseTyKindM
+            (\ty -> case ty of
+              VarTy i -> _4 %= HashSet.insert i
+              _ -> return ())
+
+unifyEnv :: TypeInferer ()
+unifyEnv = do
+  env <- use _1
+  constraints <- use _3
+  _1 .= HashMap.map (unify constraints) env
+
 inferTypeOfParams :: AST -> TypeInferer TypedAST
 inferTypeOfParams x@(Lit _ _) = inferType' x
 inferTypeOfParams (List xs pos) = do
@@ -116,6 +128,7 @@ inferType' (List xs pos) = do
       typedBody <- inferType' body
       typedParams <- inferTypeOfParams params
       _1 .= env
+      unifyEnv
       constraints <- use _3
       let unifiedBody = Util.mapTyKind (unify constraints) typedBody
       let unifiedParams = Util.mapTyKind (unify constraints) typedParams
@@ -129,6 +142,24 @@ inferType' (List xs pos) = do
                 (TyLit (SymLit "seq") SymTy pos1:xs')
                 (Util.typeof (last xs'))
                 pos)
+    Lit (SymLit "let") pos1 -> do
+      let pattern = xs !! 1
+      let body = xs !! 2
+      let syms = Util.flatSymbols pattern
+      typedBody <- inferType' body
+      makePoly typedBody
+      forM_ syms $ \sym -> do
+        var <- gensym
+        _1 %= HashMap.insert sym (VarTy var)
+      typedPattern <- inferTypeOfParams pattern
+      _3 %= (Equal (Util.typeof typedBody) (Util.typeof typedPattern):)
+      unifyEnv
+      constraints <- use _3
+      let unifiedPattern = Util.mapTyKind (unify constraints) typedPattern
+      return (TyList
+                [TyLit (SymLit "let") SymTy pos1, unifiedPattern, typedBody]
+                (ListTy [])
+                pos)
     _ -> do
       let func = head xs
       let args = tail xs
@@ -141,7 +172,7 @@ inferType' (List xs pos) = do
       return (TyList (typedFunc:typedArgs) (VarTy x) pos)
 
 inferType :: AST -> TypedAST
-inferType ast = evalState (inferType' ast) (Util.initialTypeEnv, Util.infiniteVarList, [])
+inferType ast = evalState (inferType' ast) (Util.initialTypeEnv, Util.infiniteVarList, [], HashSet.empty)
 
 subst :: Variable -> TyKind -> TyKind -> TyKind
 subst i x y@(VarTy j)

@@ -2,6 +2,7 @@ module Language.Binal.Types where
 
 import           Control.Monad.State
 import qualified Data.List as List
+import qualified Data.HashSet as HashSet
 import qualified Data.HashMap.Strict as HashMap
 
 data Where
@@ -51,7 +52,7 @@ type Variable = Int
 
 type TypeEnv = HashMap.HashMap String TyKind
 
-type TypeInferer a = State (TypeEnv, [Variable], [Constraint]) a
+type TypeInferer a = State (TypeEnv, [Variable], [Constraint], HashSet.HashSet Variable) a
 
 data TyKind
   = VarTy Variable

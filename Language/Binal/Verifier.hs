@@ -116,9 +116,12 @@ inferType' (List xs pos) = do
       typedBody <- inferType' body
       typedParams <- inferTypeOfParams params
       _1 .= env
+      constraints <- use _3
+      let unifiedBody = Util.mapTyKind (unify constraints) typedBody
+      let unifiedParams = Util.mapTyKind (unify constraints) typedParams
       return (TyList
-                [TyLit (SymLit "lambda") SymTy pos1, typedParams, typedBody]
-                (ArrTy (Util.typeof typedParams) (Util.typeof typedBody))
+                [TyLit (SymLit "lambda") SymTy pos1, unifiedParams, unifiedBody]
+                (ArrTy (Util.typeof unifiedParams) (Util.typeof unifiedBody))
                 pos)
     Lit (SymLit "seq") pos1 -> do
       xs' <- mapM inferType' (tail xs)
@@ -138,9 +141,7 @@ inferType' (List xs pos) = do
       return (TyList (typedFunc:typedArgs) (VarTy x) pos)
 
 inferType :: AST -> TypedAST
-inferType ast = do
-  let (typedAST, (_, _, constraints)) = runState (inferType' ast) (Util.initialTypeEnv, Util.infiniteVarList, [])
-  Util.mapTyKind (unify constraints) typedAST
+inferType ast = evalState (inferType' ast) (Util.initialTypeEnv, Util.infiniteVarList, [])
 
 subst :: Variable -> TyKind -> TyKind -> TyKind
 subst i x y@(VarTy j)

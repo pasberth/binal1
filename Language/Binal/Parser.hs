@@ -82,7 +82,7 @@ sexp = list <|> atom
 
 program :: T.Parser AST
 program = do
-  (pos, xs) <- withPosition (T.spaces *> many sexp)
+  (pos, xs) <- withPosition (many (T.spaces *> sexp <* T.spaces))
   return (List (Lit (SymLit "seq") pos:xs) pos)
 
 parseFromFile :: FilePath -> IO (Maybe AST)

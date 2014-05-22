@@ -10,7 +10,6 @@ import qualified Data.HashSet        as HashSet
 import qualified Data.HashMap.Strict as HashMap
 import           Language.Binal.Types
 import qualified Language.Binal.Util as Util
-import Debug.Trace
 
 examineFormOfParams :: AST -> [SyntaxError]
 examineFormOfParams lit@(Lit _ _) = examineForms lit
@@ -348,7 +347,6 @@ unify' (Equal s t absurd:c)
                 | otherwise -> do
                   let (absurds, substitution) = unify' c
                   (absurd:absurds, substitution)
-                 --  (lambda f ((lambda x (f (x x))) (lambda x (f (x x)))))
               (_, RecTy k t1)
                 | Util.tyLength t1 < Util.tyLength s -> do
                   unify' (Equal s (subst k t t1) absurd:c)
@@ -357,4 +355,4 @@ unify' (Equal s t absurd:c)
                   (absurd:absurds, substitution)
               _ -> do
                 let (absurds, substitution) = unify' c
-                traceShow (t,s) $ (absurd:absurds, substitution)
+                (absurd:absurds, substitution)

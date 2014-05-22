@@ -109,10 +109,19 @@ gensym = do
   return var
 
 makePoly :: TypedAST -> TypeInferer ()
-makePoly = Util.traverseTyKindM
-            (\ty -> case ty of
-              VarTy i -> _4 %= HashSet.insert i
-              _ -> return ())
+makePoly tast@(TyLit _ _ _)
+  = Util.traverseTyKindM
+      (\ty -> case ty of
+        VarTy i -> _4 %= HashSet.insert i
+        _ -> return ())
+      tast
+makePoly tast@(TyList (TyLit (SymLit "lambda") _ _:_) _ _)
+  = Util.traverseTyKindM
+      (\ty -> case ty of
+        VarTy i -> _4 %= HashSet.insert i
+        _ -> return ())
+      tast
+makePoly _ = return ()
 
 freshPoly' :: TyKind -> StateT (HashMap.HashMap Variable Variable) (State (TypeEnv, [Variable], [Constraint], PolyEnv)) TyKind
 freshPoly' (VarTy i) = do
@@ -229,7 +238,6 @@ inferType' (List xs pos) = do
       let unifiedBody = Util.mapTyKind (unify constraints) typedBody
       let unifiedPattern = Util.mapTyKind (unify constraints) typedPattern
       makePoly unifiedBody
-      makePoly unifiedPattern
       return (TyList
                 [TyLit (SymLit "letrec") SymTy pos1, unifiedPattern, unifiedBody]
                 (ListTy [])

@@ -1,6 +1,7 @@
 module Language.Binal.CLI where
 
 import           Language.Binal.Types
+import qualified Language.Binal.Util as Util
 import qualified Language.Binal.PrettyPrint as PP
 import qualified Language.Binal.Verifier as V
 
@@ -23,3 +24,17 @@ checkAST ast = do
     errs -> do
       mapM_ PP.prettyANSISyntaxError errs
       return Nothing
+
+generateInterface :: TypedAST -> String
+generateInterface (TyList (TyLit (SymLit "seq") _ _:xs) _ _)
+  = unlines (map generateInterface xs)
+generateInterface (TyList (TyLit (SymLit "let") _ _:param:_:[]) _ _)
+  = "(val " ++ generateIdent param ++ " " ++ generateType (Util.typeof param) ++ ")"
+generateInterface _ = ""
+
+generateIdent :: TypedAST -> String
+generateIdent (TyLit name _ _) = show name
+generateIdent (TyList xs _ _) = "(" ++ unwords (map generateIdent xs) ++ ")"
+
+generateType :: TyKind -> String
+generateType = Util.showTy

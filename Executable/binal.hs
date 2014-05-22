@@ -13,7 +13,11 @@ main = do
       maybeAst <- B.parseFromFile path
       case maybeAst of
         Just ast -> do
-          _ <- B.checkAST ast
-          return ()
+          maybeTypedAST <- B.checkAST ast
+          case maybeTypedAST of
+            Just typedAST -> do
+              putStrLn (B.generateInterface typedAST)
+            Nothing -> do
+              return ()
         Nothing -> System.Exit.exitFailure
     _ -> System.Exit.exitFailure

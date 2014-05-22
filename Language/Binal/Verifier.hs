@@ -215,7 +215,6 @@ inferType' (List xs pos) = do
         var <- gensym
         _1 %= HashMap.insert sym (VarTy var)
       typedBody <- inferType' body
-      makePoly typedBody
       typedPattern <- inferTypeOfParams pattern
       let bodyTy = Util.typeof typedBody
       let patTy = Util.typeof typedPattern
@@ -225,6 +224,8 @@ inferType' (List xs pos) = do
       constraints <- use _3
       let unifiedBody = Util.mapTyKind (unify constraints) typedBody
       let unifiedPattern = Util.mapTyKind (unify constraints) typedPattern
+      makePoly unifiedBody
+      makePoly unifiedPattern
       return (TyList
                 [TyLit (SymLit "letrec") SymTy pos1, unifiedPattern, unifiedBody]
                 (ListTy [])

@@ -23,7 +23,7 @@ repl = Haskeline.runInputT Haskeline.defaultSettings loop where
               maybeTypedAST <- liftIO (CLI.checkAST ast)
               case maybeTypedAST of
                 Just typedAST -> do
-                  let msg = "- : " ++ show (Util.typeof typedAST)
+                  let msg = "- : " ++ Util.showTy (Util.typeof typedAST)
                   Haskeline.outputStrLn msg
                 Nothing -> do
                   return ()

@@ -10,6 +10,7 @@ import qualified Data.HashSet        as HashSet
 import qualified Data.HashMap.Strict as HashMap
 import           Language.Binal.Types
 import qualified Language.Binal.Util as Util
+import Debug.Trace
 
 examineFormOfParams :: AST -> [SyntaxError]
 examineFormOfParams lit@(Lit _ _) = examineForms lit
@@ -127,6 +128,10 @@ freshPoly' (VarTy i) = do
           modify (HashMap.insert i var)
           return (VarTy var)
     else return (VarTy i)
+freshPoly' (RecTy i ty) = do
+  VarTy i' <- freshPoly' (VarTy i)
+  ty' <- freshPoly' ty
+  return (RecTy i' ty')
 freshPoly' SymTy = return SymTy
 freshPoly' StrTy = return StrTy
 freshPoly' IntTy = return IntTy
@@ -256,6 +261,9 @@ subst :: Variable -> TyKind -> TyKind -> TyKind
 subst i x y@(VarTy j)
   | i == j = x
   | otherwise = y
+subst i x (RecTy j ty)
+  | i == j = RecTy j ty
+  | otherwise = RecTy j (subst i x ty)
 subst _ _ SymTy = SymTy
 subst _ _ StrTy = StrTy
 subst _ _ IntTy = IntTy
@@ -284,15 +292,25 @@ unify' (Equal s t absurd:c)
     let tmp2 = Util.extractVarTy t
     let i = Maybe.fromJust tmp1
     let j = Maybe.fromJust tmp2
-    if Maybe.isJust tmp1 && not (elem i (Util.freeVariables t))
-      then do
-        let (absurds, substitution) = unify' (map (substConstraint i t) c)
-        (absurds, substitution . subst i t)
-      else
-        if Maybe.isJust tmp2 && not (elem j (Util.freeVariables s))
+    if Maybe.isJust tmp1
+      then
+        if not (elem i (Util.freeVariables t))
           then do
-            let (absurds, substitution) = unify' (map (substConstraint j s) c)
-            (absurds, substitution . subst j s)
+            let (absurds, substitution) = unify' (map (substConstraint i t) c)
+            (absurds, substitution . subst i t)
+          else do
+            let (absurds, substitution) = unify' (map (substConstraint i (RecTy i t)) c)
+            (absurds, substitution . subst i (RecTy i t))
+      else
+        if Maybe.isJust tmp2
+          then do
+            if not (elem j (Util.freeVariables s))
+              then do
+                let (absurds, substitution) = unify' (map (substConstraint j s) c)
+                (absurds, substitution . subst j s)
+              else do
+                let (absurds, substitution) = unify' (map (substConstraint j (RecTy j s)) c)
+                (absurds, substitution . subst j (RecTy j s))
           else
             case (s, t) of
               (ArrTy s1 s2, ArrTy t1 t2) ->
@@ -322,6 +340,21 @@ unify' (Equal s t absurd:c)
                   unify' (map (\(a,b) -> Equal a b absurd) (zip xs1 ys1)
                           ++ [Equal xs2 ys2 absurd]
                           ++ c)
+              (RecTy _ s1, RecTy _ t1) -> do
+                unify' (Equal s1 t1 absurd:c)
+              (RecTy k s1, _)
+                | Util.tyLength s1 < Util.tyLength t -> do
+                  unify' (Equal (subst k s s1) t absurd:c)
+                | otherwise -> do
+                  let (absurds, substitution) = unify' c
+                  (absurd:absurds, substitution)
+                 --  (lambda f ((lambda x (f (x x))) (lambda x (f (x x)))))
+              (_, RecTy k t1)
+                | Util.tyLength t1 < Util.tyLength s -> do
+                  unify' (Equal s (subst k t t1) absurd:c)
+                | otherwise -> do
+                  let (absurds, substitution) = unify' c
+                  (absurd:absurds, substitution)
               _ -> do
                 let (absurds, substitution) = unify' c
-                (absurd:absurds, substitution)
+                traceShow (t,s) $ (absurd:absurds, substitution)

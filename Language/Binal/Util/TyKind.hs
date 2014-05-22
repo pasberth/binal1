@@ -5,8 +5,19 @@ import qualified Data.List as List
 import qualified Data.HashMap.Strict as HashMap
 import           Language.Binal.Types
 
+tyLength :: TyKind -> Int
+tyLength (VarTy _) = 1
+tyLength (RecTy _ ty) = tyLength ty
+tyLength SymTy = 1
+tyLength StrTy = 1
+tyLength IntTy = 1
+tyLength NumTy = 1
+tyLength (ArrTy x y) = tyLength x + tyLength y
+tyLength (ListTy xs) = sum (map tyLength xs)
+
 freeVariables :: TyKind -> [Variable]
 freeVariables (VarTy i) = [i]
+freeVariables (RecTy i ty) = filter (/=i) (freeVariables ty)
 freeVariables SymTy = []
 freeVariables StrTy = []
 freeVariables IntTy = []
@@ -31,6 +42,7 @@ flatListTy' xs = do
 
 flatListTy :: TyKind -> TyKind
 flatListTy (VarTy i) = VarTy i
+flatListTy (RecTy i ty) = RecTy i (flatListTy ty)
 flatListTy SymTy = SymTy
 flatListTy StrTy = StrTy
 flatListTy IntTy = IntTy
@@ -52,6 +64,10 @@ showTy' (VarTy i) = do
       let mp' = HashMap.insert i v mp
       put (mp', varList')
       return ('\'':v)
+showTy' (RecTy i ty) = do
+  x <- showTy' (VarTy i)
+  y <- showTy' ty
+  return ("(recur " ++ x ++ " " ++ y ++ ")")
 showTy' SymTy = return "symbol"
 showTy' StrTy = return "string"
 showTy' IntTy = return "int"

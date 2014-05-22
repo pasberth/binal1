@@ -58,6 +58,7 @@ type TypeInferer a = State (TypeEnv, [Variable], [Constraint], PolyEnv) a
 
 data TyKind
   = VarTy Variable
+  | RecTy Variable TyKind
   | SymTy
   | StrTy
   | IntTy
@@ -68,6 +69,7 @@ data TyKind
 
 instance Show TyKind where
   show (VarTy i) = "'_" ++ show i
+  show (RecTy i ty) = "(recur '" ++ show i ++ " " ++ show ty ++ ")"
   show SymTy = "symbol"
   show StrTy = "string"
   show IntTy = "int"

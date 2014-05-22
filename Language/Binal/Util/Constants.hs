@@ -15,15 +15,14 @@ primitives :: HashSet.HashSet String
 primitives = HashSet.fromList (HashMap.keys initialTypeEnv)
 
 initialVarList :: [Variable]
-initialVarList = [2..]
+initialVarList = [0..]
 
 initialTypeEnv :: TypeEnv
 initialTypeEnv = HashMap.fromList
                   [ ("str.add@", ArrTy (ListTy [StrTy, StrTy]) StrTy)
                   , ("int.add@", ArrTy (ListTy [IntTy, IntTy]) IntTy)
                   , ("num.add@", ArrTy (ListTy [NumTy, NumTy]) NumTy)
-                  , ("apply@", ArrTy (ListTy [ArrTy (VarTy 0) (VarTy 1), VarTy 0]) (VarTy 1))
                   ]
 
 initialPolyEnv :: PolyEnv
-initialPolyEnv = HashSet.fromList [0..1]
+initialPolyEnv = HashSet.fromList []

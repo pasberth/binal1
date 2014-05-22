@@ -33,4 +33,6 @@ flatListTy StrTy = StrTy
 flatListTy IntTy = IntTy
 flatListTy NumTy = NumTy
 flatListTy (ArrTy ty1 ty2) = ArrTy (flatListTy ty1) (flatListTy ty2)
-flatListTy (ListTy tys) = ListTy (flatListTy' tys)
+flatListTy (ListTy tys) = case flatListTy' tys of
+  [ty] -> ty
+  tys' -> ListTy tys'

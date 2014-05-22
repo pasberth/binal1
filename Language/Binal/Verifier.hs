@@ -200,7 +200,7 @@ inferType' (List xs pos) = do
       return (Util.mapTyKind (unify constraints) (TyList (unifiedFunc:unifiedArgs) (VarTy x) pos))
 
 inferType :: AST -> TypedAST
-inferType ast = evalState (inferType' ast) (Util.initialTypeEnv, Util.initialVarList, [], Util.initialPolyEnv)
+inferType ast = Util.mapTyKind Util.flatListTy (evalState (inferType' ast) (Util.initialTypeEnv, Util.initialVarList, [], Util.initialPolyEnv))
 
 subst :: Variable -> TyKind -> TyKind -> TyKind
 subst i x y@(VarTy j)
@@ -234,12 +234,32 @@ unify (Equal s t:c)
             case (s, t) of
               (ArrTy s1 s2, ArrTy t1 t2) ->
                 unify (Equal s1 t1:Equal s2 t2:c)
+              (ListTy [], _) ->
+                unify c
+              (_, ListTy []) ->
+                unify c
               (ListTy xs, ListTy ys)
                 | length xs == length ys ->
                   unify (map (uncurry Equal) (zip xs ys) ++ c)
-                | otherwise ->
-                  unify c
-              _ -> id
+                | length xs < length ys -> do
+                  let len = length xs - 1
+                  let xs1 = take len xs
+                  let ys1 = take len ys
+                  let xs2 = last xs
+                  let ys2 = ListTy (drop len ys)
+                  unify (map (uncurry Equal) (zip xs1 ys1)
+                          ++ [Equal xs2 ys2]
+                          ++ c)
+                | length xs > length ys -> do
+                  let len = length ys - 1
+                  let xs1 = take len xs
+                  let ys1 = take len ys
+                  let xs2 = ListTy (drop len xs)
+                  let ys2 = last ys
+                  unify (map (uncurry Equal) (zip xs1 ys1)
+                          ++ [Equal xs2 ys2]
+                          ++ c)
+              _ -> unify c
 
 examineAbsurds :: TypedAST -> [Absurd]
 examineAbsurds (TyLit _ _ _) = []
@@ -255,7 +275,7 @@ examineAbsurds (TyList xs _ pos) = do
       let func = instr
       let args = tail xs
       let funcTy = Util.typeof func
-      let argsTy = ListTy (map Util.typeof args)
+      let argsTy = Util.flatListTy (ListTy (map Util.typeof args))
       case funcTy of
         ArrTy srcTy _ -> do
           if srcTy == argsTy

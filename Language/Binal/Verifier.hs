@@ -10,6 +10,12 @@ import qualified Data.HashMap.Strict as HashMap
 import           Language.Binal.Types
 import qualified Language.Binal.Util as Util
 
+examineFormOfParams :: AST -> [SyntaxError]
+examineFormOfParams lit@(Lit _ _) = examineForms lit
+examineFormOfParams (List [] _) = []
+examineFormOfParams (List [_] pos) = [UnexpectedArity 2 1 pos]
+examineFormOfParams (List xs _) = concatMap examineFormOfParams xs
+
 -- 特殊形式が妥当か検査する
 examineForms :: AST -> [SyntaxError]
 examineForms (Lit lit pos) = do
@@ -27,8 +33,9 @@ examineForms (List xs pos) = do
       if length xs /= 3
         then [UnexpectedArity 3 (length xs) pos]
         else do
+          let params = xs !! 1
           let body = xs !! 2
-          examineForms body
+          examineFormOfParams params ++ examineForms body
     Lit (SymLit "seq") _ -> do
       if length xs == 1
         then [UnexpectedArity 2 (length xs) pos]
@@ -37,8 +44,9 @@ examineForms (List xs pos) = do
       if length xs /= 3
         then [UnexpectedArity 3 (length xs) pos]
         else do
+          let pattern = xs !! 1
           let body = xs !! 2
-          examineForms body
+          examineFormOfParams pattern ++ examineForms body
     _ -> concatMap examineForms xs
 
 examineNames' :: AST -> State (HashSet.HashSet String) [NotInScope]

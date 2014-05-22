@@ -71,7 +71,7 @@ numLit = do
 
 list :: T.Parser AST
 list = do
-  (pos, xs) <- withPosition (T.parens (many (sexp <* T.spaces)))
+  (pos, xs) <- withPosition (T.char '(' *> (many (T.spaces *> sexp <* T.spaces)) <* T.char ')')
   return (List xs pos)
 
 atom :: T.Parser AST

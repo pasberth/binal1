@@ -10,8 +10,8 @@ checkAST ast = do
     [] -> do
       case V.examineNames ast of
         [] -> do
-          let typedAST = V.inferType ast
-          case V.examineAbsurds typedAST of
+          let (absurds, typedAST) = V.inferType ast
+          case absurds ++ V.examineAbsurds typedAST of
             [] -> do
               return (Just typedAST)
             errs -> do

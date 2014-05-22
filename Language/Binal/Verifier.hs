@@ -182,7 +182,10 @@ inferType' (List xs pos) = do
         var <- gensym
         _1 %= HashMap.insert sym (VarTy var)
       typedPattern <- inferTypeOfParams pattern
-      _3 %= (Equal (Util.typeof typedBody) (Util.typeof typedPattern):)
+      let bodyTy = Util.typeof typedBody
+      let patTy = Util.typeof typedPattern
+      let absurd = UnexpectedType bodyTy patTy (Util.whereIs typedPattern)
+      _3 %= (Equal bodyTy patTy absurd :)
       unifyEnv
       constraints <- use _3
       let unifiedPattern = Util.mapTyKind (unify constraints) typedPattern
@@ -198,15 +201,19 @@ inferType' (List xs pos) = do
       let funcTy = Util.typeof typedFunc
       let argsTy = Util.flatListTy (ListTy (map Util.typeof typedArgs))
       x <- gensym
-      _3 %= (Equal funcTy (ArrTy argsTy (VarTy x)):)
+      let expected = ArrTy argsTy (VarTy x)
+      _3 %= (Equal expected funcTy (UnexpectedType expected funcTy (Util.whereIs typedFunc)) :)
       unifyEnv
       constraints <- use _3
       let unifiedFunc = Util.mapTyKind (unify constraints) typedFunc
       let unifiedArgs = map (Util.mapTyKind (unify constraints)) typedArgs
       return (Util.mapTyKind (unify constraints) (TyList (unifiedFunc:unifiedArgs) (VarTy x) pos))
 
-inferType :: AST -> TypedAST
-inferType ast = Util.mapTyKind Util.flatListTy (evalState (inferType' ast) (Util.initialTypeEnv, Util.initialVarList, [], Util.initialPolyEnv))
+inferType :: AST -> ([Absurd], TypedAST)
+inferType ast = do
+  let (typedAST, (_, _, constraints, _)) = runState (inferType' ast) (Util.initialTypeEnv, Util.initialVarList, [], Util.initialPolyEnv)
+  let absurds = cantUnify constraints
+  (absurds, Util.mapTyKind Util.flatListTy typedAST)
 
 subst :: Variable -> TyKind -> TyKind -> TyKind
 subst i x y@(VarTy j)
@@ -220,41 +227,54 @@ subst i x (ArrTy y z) = ArrTy (subst i x y) (subst i x z)
 subst i x (ListTy xs) = ListTy (map (subst i x) xs)
 
 substConstraint :: Variable -> TyKind -> Constraint -> Constraint
-substConstraint i y (Equal ty1 ty2) = Equal (subst i y ty1) (subst i y ty2)
+substConstraint i y (Equal ty1 ty2 absurd) = Equal (subst i y ty1) (subst i y ty2) (substAbsurd i y absurd)
+
+substAbsurd :: Variable -> TyKind -> Absurd -> Absurd
+substAbsurd i y (UnexpectedType ty1 ty2 pos) = UnexpectedType (subst i y ty1) (subst i y ty2) pos
 
 unify :: [Constraint] -> TyKind -> TyKind
-unify [] = id
-unify (Equal s t:c)
-  | s == t = unify c
+unify = snd . unify'
+
+cantUnify :: [Constraint] -> [Absurd]
+cantUnify = fst . unify'
+
+unify' :: [Constraint] -> ([Absurd], TyKind -> TyKind)
+unify' [] = ([], id)
+unify' (Equal s t absurd:c)
+  | s == t = unify' c
   | otherwise = do
     let tmp1 = Util.extractVarTy s
     let tmp2 = Util.extractVarTy t
     let i = Maybe.fromJust tmp1
     let j = Maybe.fromJust tmp2
     if Maybe.isJust tmp1 && not (elem i (Util.freeVariables t))
-      then unify (map (substConstraint i t) c) . subst i t
+      then do
+        let (absurds, substitution) = unify' (map (substConstraint i t) c)
+        (absurds, substitution . subst i t)
       else
         if Maybe.isJust tmp2 && not (elem j (Util.freeVariables s))
-          then unify (map (substConstraint j s) c) . subst j s
+          then do
+            let (absurds, substitution) = unify' (map (substConstraint j s) c)
+            (absurds, substitution . subst j s)
           else
             case (s, t) of
               (ArrTy s1 s2, ArrTy t1 t2) ->
-                unify (Equal s1 t1:Equal s2 t2:c)
+                unify' (Equal s1 t1 absurd:Equal s2 t2 absurd:c)
               (ListTy [], _) ->
-                unify c
+                unify' c
               (_, ListTy []) ->
-                unify c
+                unify' c
               (ListTy xs, ListTy ys)
                 | length xs == length ys ->
-                  unify (map (uncurry Equal) (zip xs ys) ++ c)
+                  unify' (map (\(a,b) -> Equal a b absurd) (zip xs ys) ++ c)
                 | length xs < length ys -> do
                   let len = length xs - 1
                   let xs1 = take len xs
                   let ys1 = take len ys
                   let xs2 = last xs
                   let ys2 = ListTy (drop len ys)
-                  unify (map (uncurry Equal) (zip xs1 ys1)
-                          ++ [Equal xs2 ys2]
+                  unify' (map (\(a,b) -> Equal a b absurd) (zip xs1 ys1)
+                          ++ [Equal xs2 ys2 absurd]
                           ++ c)
                 | length xs > length ys -> do
                   let len = length ys - 1
@@ -262,10 +282,12 @@ unify (Equal s t:c)
                   let ys1 = take len ys
                   let xs2 = ListTy (drop len xs)
                   let ys2 = last ys
-                  unify (map (uncurry Equal) (zip xs1 ys1)
-                          ++ [Equal xs2 ys2]
+                  unify' (map (\(a,b) -> Equal a b absurd) (zip xs1 ys1)
+                          ++ [Equal xs2 ys2 absurd]
                           ++ c)
-              _ -> unify c
+              _ -> do
+                let (absurds, substitution) = unify' c
+                (absurd:absurds, substitution)
 
 examineAbsurds :: TypedAST -> [Absurd]
 examineAbsurds (TyLit _ _ _) = []

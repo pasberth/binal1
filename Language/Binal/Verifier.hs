@@ -226,7 +226,7 @@ inferType' (List xs pos) = do
       let unifiedBody = Util.mapTyKind (unify constraints) typedBody
       let unifiedPattern = Util.mapTyKind (unify constraints) typedPattern
       return (TyList
-                [TyLit (SymLit "let") SymTy pos1, unifiedPattern, unifiedBody]
+                [TyLit (SymLit "letrec") SymTy pos1, unifiedPattern, unifiedBody]
                 (ListTy [])
                 pos)
     _ -> do

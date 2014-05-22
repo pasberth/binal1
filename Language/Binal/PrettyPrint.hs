@@ -3,6 +3,7 @@ module Language.Binal.PrettyPrint where
 import qualified System.IO
 import qualified System.Console.ANSI as ANSI
 import           Language.Binal.Types
+import qualified Language.Binal.Util as Util
 
 prettyANSIError :: IO ()
 prettyANSIError = do
@@ -73,7 +74,8 @@ prettyANSINotInScope (NotInScope ident pos) = do
 
 prettyANSIAbsurd :: Absurd -> IO ()
 prettyANSIAbsurd (UnexpectedType expected actual pos) = do
-  let msg = "couldn't match type: expected " ++ show expected ++ " actual " ++ show actual
+  let (x, y) = Util.showTy2 expected actual
+  let msg = "couldn't match type: expected " ++ x ++ " actual " ++ y
   prettyANSIWhere pos
   prettyANSIError
   ANSI.hSetSGR System.IO.stderr [ANSI.SetConsoleIntensity ANSI.BoldIntensity]

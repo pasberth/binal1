@@ -1,5 +1,8 @@
 module Language.Binal.Util.TyKind where
 
+import           Control.Monad.State
+import qualified Data.List as List
+import qualified Data.HashMap.Strict as HashMap
 import           Language.Binal.Types
 
 freeVariables :: TyKind -> [Variable]
@@ -36,3 +39,33 @@ flatListTy (ArrTy ty1 ty2) = ArrTy (flatListTy ty1) (flatListTy ty2)
 flatListTy (ListTy tys) = case flatListTy' tys of
   [ty] -> ty
   tys' -> ListTy tys'
+
+showTy' :: TyKind -> State (HashMap.HashMap Variable String, [String]) String
+showTy' (VarTy i) = do
+  (mp, varList) <- get
+  case HashMap.lookup i mp of
+    Just s -> return ('\'':s)
+    Nothing -> do
+      let (v, varList') = case varList of
+                            [] -> (show i, [])
+                            (s:ss) -> (s, ss)
+      let mp' = HashMap.insert i v mp
+      put (mp', varList')
+      return ('\'':v)
+showTy' SymTy = return "symbol"
+showTy' StrTy = return "string"
+showTy' IntTy = return "int"
+showTy' NumTy = return "number"
+showTy' (ArrTy ty1 ty2) = do
+  ty1S <- showTy' ty1
+  ty2S <- showTy' ty2
+  return ("(-> " ++ ty1S ++ " " ++ ty2S ++ ")")
+showTy' (ListTy xs) = do
+  ss <- mapM showTy' xs
+  return ("(" ++ concat (List.intersperse " " ss) ++ ")")
+
+showTy :: TyKind -> String
+showTy ty = evalState (showTy' ty) (HashMap.empty, map (\ch -> [ch]) ['a'..'z'])
+
+showTy2 :: TyKind -> TyKind -> (String, String)
+showTy2 ty1 ty2 = evalState (do { x <- showTy' ty1; y <- showTy' ty2; return (x, y) }) (HashMap.empty, map (\ch -> [ch]) ['a'..'z'])

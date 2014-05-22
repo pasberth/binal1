@@ -27,9 +27,8 @@ examineForms (List xs pos) = do
       if length xs /= 3
         then [UnexpectedArity 3 (length xs) pos]
         else do
-          let params = xs !! 1
           let body = xs !! 2
-          examineForms params ++ examineForms body
+          examineForms body
     Lit (SymLit "seq") _ -> do
       if length xs == 1
         then [UnexpectedArity 2 (length xs) pos]
@@ -38,9 +37,8 @@ examineForms (List xs pos) = do
       if length xs /= 3
         then [UnexpectedArity 3 (length xs) pos]
         else do
-          let pattern = xs !! 1
           let body = xs !! 2
-          examineForms pattern ++ examineForms body
+          examineForms body
     _ -> concatMap examineForms xs
 
 examineNames' :: AST -> State (HashSet.HashSet String) [NotInScope]

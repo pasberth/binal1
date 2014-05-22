@@ -51,8 +51,9 @@ instance Show TypedAST where
 type Variable = Int
 
 type TypeEnv = HashMap.HashMap String TyKind
+type PolyEnv = HashSet.HashSet Variable
 
-type TypeInferer a = State (TypeEnv, [Variable], [Constraint], HashSet.HashSet Variable) a
+type TypeInferer a = State (TypeEnv, [Variable], [Constraint], PolyEnv) a
 
 data TyKind
   = VarTy Variable

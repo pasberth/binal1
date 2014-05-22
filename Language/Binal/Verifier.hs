@@ -94,7 +94,7 @@ makePoly = Util.traverseTyKindM
               VarTy i -> _4 %= HashSet.insert i
               _ -> return ())
 
-freshPoly' :: TyKind -> StateT (HashMap.HashMap Variable Variable) (State (TypeEnv, [Variable], [Constraint], HashSet.HashSet Variable)) TyKind
+freshPoly' :: TyKind -> StateT (HashMap.HashMap Variable Variable) (State (TypeEnv, [Variable], [Constraint], PolyEnv)) TyKind
 freshPoly' (VarTy i) = do
   isPoly <- lift (uses _4 (HashSet.member i))
   if isPoly
@@ -200,7 +200,7 @@ inferType' (List xs pos) = do
       return (Util.mapTyKind (unify constraints) (TyList (unifiedFunc:unifiedArgs) (VarTy x) pos))
 
 inferType :: AST -> TypedAST
-inferType ast = evalState (inferType' ast) (Util.initialTypeEnv, Util.infiniteVarList, [], HashSet.empty)
+inferType ast = evalState (inferType' ast) (Util.initialTypeEnv, Util.initialVarList, [], Util.initialPolyEnv)
 
 subst :: Variable -> TyKind -> TyKind -> TyKind
 subst i x y@(VarTy j)

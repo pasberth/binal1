@@ -48,6 +48,13 @@ examineForms (List xs pos) = do
           let pattern = xs !! 1
           let body = xs !! 2
           examineFormOfParams pattern ++ examineForms body
+    Lit (SymLit "letrec") _ -> do
+      if length xs /= 3
+        then [UnexpectedArity 3 (length xs) pos]
+        else do
+          let pattern = xs !! 1
+          let body = xs !! 2
+          examineFormOfParams pattern ++ examineForms body
     _ -> concatMap examineForms xs
 
 examineNames' :: AST -> State (HashSet.HashSet String) [NotInScope]
@@ -82,6 +89,12 @@ examineNames' (List xs _) = do
       let env' = foldr HashSet.insert env (Util.flatSymbols pattern)
       put env'
       return r
+    Lit (SymLit "letrec") _ -> do
+      let pattern = xs !! 1
+      let body = xs !! 2
+      let env' = foldr HashSet.insert env (Util.flatSymbols pattern)
+      put env'
+      examineNames' body
     _ -> do
       rs <- mapM examineNames' xs
       return (concat rs)
@@ -192,6 +205,28 @@ inferType' (List xs pos) = do
       let unifiedPattern = Util.mapTyKind (unify constraints) typedPattern
       return (TyList
                 [TyLit (SymLit "let") SymTy pos1, unifiedPattern, typedBody]
+                (ListTy [])
+                pos)
+    Lit (SymLit "letrec") pos1 -> do
+      let pattern = xs !! 1
+      let body = xs !! 2
+      let syms = Util.flatSymbols pattern
+      forM_ syms $ \sym -> do
+        var <- gensym
+        _1 %= HashMap.insert sym (VarTy var)
+      typedBody <- inferType' body
+      makePoly typedBody
+      typedPattern <- inferTypeOfParams pattern
+      let bodyTy = Util.typeof typedBody
+      let patTy = Util.typeof typedPattern
+      let absurd = UnexpectedType bodyTy patTy (Util.whereIs typedPattern)
+      _3 %= (Equal bodyTy patTy absurd :)
+      unifyEnv
+      constraints <- use _3
+      let unifiedBody = Util.mapTyKind (unify constraints) typedBody
+      let unifiedPattern = Util.mapTyKind (unify constraints) typedPattern
+      return (TyList
+                [TyLit (SymLit "let") SymTy pos1, unifiedPattern, unifiedBody]
                 (ListTy [])
                 pos)
     _ -> do

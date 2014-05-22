@@ -98,7 +98,7 @@ parseString str = do
 
 parseStringSExp :: String -> IO (Maybe AST)
 parseStringSExp str = do
-  case T.parseString (sexp <* T.eof) (D.Columns 0 0) str of
+  case T.parseString (T.spaces *> sexp <* T.spaces <* T.eof) (D.Columns 0 0) str of
     T.Success x -> return (Just x)
     T.Failure doc -> do
       putStrLn (show doc)

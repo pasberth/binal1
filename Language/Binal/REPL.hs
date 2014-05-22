@@ -17,7 +17,7 @@ repl = Haskeline.runInputT Haskeline.defaultSettings loop where
       Just input
         | null input -> loop
         | otherwise -> do
-          maybeAST <- liftIO (P.parseStringSExp input)
+          maybeAST <- liftIO (P.parseStringSExp (input ++ "\n"))
           case maybeAST of
             Just ast -> do
               maybeTypedAST <- liftIO (CLI.checkAST ast)

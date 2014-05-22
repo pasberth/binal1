@@ -188,7 +188,7 @@ inferType' (List xs pos) = do
       typedFunc <- inferType' func
       typedArgs <- mapM inferType' args
       let funcTy = Util.typeof typedFunc
-      let argsTy = ListTy (map Util.typeof typedArgs)
+      let argsTy = Util.flatListTy (ListTy (map Util.typeof typedArgs))
       x <- gensym
       _3 %= (Equal funcTy (ArrTy argsTy (VarTy x)):)
       unifyEnv

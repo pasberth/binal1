@@ -11,7 +11,7 @@ checkAST ast = do
       case V.examineNames ast of
         [] -> do
           let (absurds, typedAST) = V.inferType ast
-          case absurds ++ V.examineAbsurds typedAST of
+          case absurds of
             [] -> do
               return (Just typedAST)
             errs -> do

@@ -19,6 +19,7 @@ data Where
       Int       -- ^ lineno of end
       Int       -- ^ columnno of end
       String    -- ^ the contents of the current line (from the beginning of the line)
+  deriving (Eq)
 
 data LitKind
   = SymLit String
@@ -88,3 +89,4 @@ data NotInScope = NotInScope String Where
 data Constraint = Equal TyKind TyKind Absurd
 
 data Absurd = UnexpectedType TyKind TyKind Where
+  deriving (Eq)

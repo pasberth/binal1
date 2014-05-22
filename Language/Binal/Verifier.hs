@@ -4,7 +4,8 @@ import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.State
 import           Control.Lens
-import qualified Data.Maybe           as Maybe
+import qualified Data.Maybe          as Maybe
+import qualified Data.List           as List
 import qualified Data.HashSet        as HashSet
 import qualified Data.HashMap.Strict as HashMap
 import           Language.Binal.Types
@@ -213,7 +214,7 @@ inferType :: AST -> ([Absurd], TypedAST)
 inferType ast = do
   let (typedAST, (_, _, constraints, _)) = runState (inferType' ast) (Util.initialTypeEnv, Util.initialVarList, [], Util.initialPolyEnv)
   let absurds = cantUnify constraints
-  (absurds, Util.mapTyKind Util.flatListTy typedAST)
+  (List.nub absurds, Util.mapTyKind Util.flatListTy typedAST)
 
 subst :: Variable -> TyKind -> TyKind -> TyKind
 subst i x y@(VarTy j)
@@ -288,25 +289,3 @@ unify' (Equal s t absurd:c)
               _ -> do
                 let (absurds, substitution) = unify' c
                 (absurd:absurds, substitution)
-
-examineAbsurds :: TypedAST -> [Absurd]
-examineAbsurds (TyLit _ _ _) = []
-examineAbsurds (TyList xs _ pos) = do
-  let instr = xs !! 0
-  case instr of
-    TyLit (SymLit "lambda") _ _ -> do
-      let body = xs !! 2
-      examineAbsurds body
-    TyLit (SymLit "seq") _ _ -> do
-      concatMap examineAbsurds (tail xs)
-    _ -> do
-      let func = instr
-      let args = tail xs
-      let funcTy = Util.typeof func
-      let argsTy = Util.flatListTy (ListTy (map Util.typeof args))
-      case funcTy of
-        ArrTy srcTy _ -> do
-          if srcTy == argsTy
-            then examineAbsurds func ++ concatMap examineAbsurds args
-            else [UnexpectedType srcTy argsTy pos]
-        _ -> []

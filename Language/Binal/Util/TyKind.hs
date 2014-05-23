@@ -5,17 +5,6 @@ import qualified Data.List as List
 import qualified Data.HashMap.Strict as HashMap
 import           Language.Binal.Types
 
-tyLength :: TyKind -> Int
-tyLength (VarTy _) = 1
-tyLength (RecTy _ ty) = tyLength ty
-tyLength SymTy = 1
-tyLength StrTy = 1
-tyLength IntTy = 1
-tyLength NumTy = 1
-tyLength (ArrTy x y) = tyLength x + tyLength y
-tyLength (ListTy xs) = sum (map tyLength xs)
-tyLength (EitherTy xs) = sum (map tyLength xs)
-
 freeVariables :: TyKind -> [Variable]
 freeVariables (VarTy i) = [i]
 freeVariables (RecTy i ty) = filter (/=i) (freeVariables ty)
@@ -26,6 +15,7 @@ freeVariables NumTy = []
 freeVariables (ArrTy x y) = freeVariables x ++ freeVariables y
 freeVariables (ListTy xs) = concatMap freeVariables xs
 freeVariables (EitherTy xs) = concatMap freeVariables xs
+freeVariables (ObjectTy _ m) = concatMap freeVariables (HashMap.elems m)
 
 extractVarTy :: TyKind -> Maybe Variable
 extractVarTy (VarTy i) = Just i
@@ -54,6 +44,7 @@ flatListTy (ListTy tys) = case flatListTy' tys of
   [ty] -> ty
   tys' -> ListTy tys'
 flatListTy (EitherTy xs) = EitherTy (map flatListTy xs)
+flatListTy (ObjectTy i m) = ObjectTy i (HashMap.map flatListTy m)
 
 flatEitherTy' :: Variable -> [TyKind] -> [TyKind]
 flatEitherTy' _ [] = []
@@ -96,10 +87,13 @@ showTy' (ArrTy ty1 ty2) = do
   return ("(-> " ++ ty1S ++ " " ++ ty2S ++ ")")
 showTy' (ListTy xs) = do
   ss <- mapM showTy' xs
-  return ("(" ++ concat (List.intersperse " " ss) ++ ")")
+  return ("(" ++ unwords ss ++ ")")
 showTy' (EitherTy xs) = do
   ss <- mapM showTy' xs
-  return ("(| " ++ concat (List.intersperse " " ss) ++ ")")
+  return ("(| " ++ unwords ss ++ ")")
+showTy' (ObjectTy _ m) = do
+  ss <- mapM (\(key, val) -> do { x <- showTy' val; return [key, x]}) (HashMap.toList m)
+  return ("(obj " ++ unwords (concat ss) ++ ")")
 
 showTy :: TyKind -> String
 showTy ty = evalState (showTy' ty) (HashMap.empty, map (\ch -> [ch]) ['a'..'z'])

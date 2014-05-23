@@ -66,6 +66,7 @@ data TyKind
   | ArrTy TyKind TyKind
   | ListTy [TyKind]
   | EitherTy [TyKind]
+  | ObjectTy [Variable] (HashMap.HashMap String TyKind)
   deriving (Eq)
 
 instance Show TyKind where
@@ -76,8 +77,10 @@ instance Show TyKind where
   show IntTy = "int"
   show NumTy = "number"
   show (ArrTy src tgt) = "(-> " ++ show src ++ " " ++ show tgt ++ ")"
-  show (ListTy xs) = "(/\\" ++ concat (List.intersperse " " (map show xs)) ++ ")"
-  show (EitherTy xs) = "(\\/" ++ concat (List.intersperse " " (map show xs)) ++ ")"
+  show (ListTy xs) = "(" ++ unwords (map show xs) ++ ")"
+  show (EitherTy xs) = "(| " ++ unwords (map show xs) ++ ")"
+  show (ObjectTy _ m) = "(obj " ++ showm ++ ")" where
+    showm = unwords (concatMap (\(key, value) -> [key, show value]) (HashMap.toList m))
 
 data SyntaxError
   = KeywordUsedAsVariable
@@ -86,6 +89,8 @@ data SyntaxError
   | UnexpectedArity
       Int -- ^ expected
       Int -- ^ actual
+      Where
+  | Malformed
       Where
 
 data NotInScope = NotInScope String Where

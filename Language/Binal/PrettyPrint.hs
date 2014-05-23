@@ -61,6 +61,14 @@ prettyANSISyntaxError (UnexpectedArity i j pos) = do
   System.IO.hPutStrLn System.IO.stderr msg
   ANSI.hSetSGR System.IO.stderr [ANSI.Reset]
   prettyANSIHintLine pos
+prettyANSISyntaxError (Malformed pos) = do
+  let msg = "malformed syntax"
+  prettyANSIWhere pos
+  prettyANSIError
+  ANSI.hSetSGR System.IO.stderr [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  System.IO.hPutStrLn System.IO.stderr msg
+  ANSI.hSetSGR System.IO.stderr [ANSI.Reset]
+  prettyANSIHintLine pos
 
 prettyANSINotInScope :: NotInScope -> IO ()
 prettyANSINotInScope (NotInScope ident pos) = do

@@ -59,6 +59,13 @@ examineForms (List xs pos) = do
       if length xs < 3
         then [UnexpectedArity 3 (length xs) pos]
         else concatMap examineForms (tail xs)
+    Lit (SymLit ".") _ -> do
+      if length xs /= 3
+        then [UnexpectedArity 3 (length xs) pos]
+        else
+          case xs !! 2 of
+            Lit (SymLit _) _ -> examineForms (xs !! 1)
+            _ -> Malformed (Util.whereIsAST (xs !! 2)) : examineForms (xs !! 1)
     _ -> concatMap examineForms xs
 
 examineNames' :: AST -> State (HashSet.HashSet String) [NotInScope]
@@ -102,6 +109,8 @@ examineNames' (List xs _) = do
     Lit (SymLit "match") _ -> do
       rs <- mapM examineNames' (tail xs)
       return (concat rs)
+    Lit (SymLit ".") _ -> do
+      examineNames' (xs !! 1)
     _ -> do
       rs <- mapM examineNames' xs
       return (concat rs)
@@ -154,6 +163,9 @@ freshPoly' NumTy = return NumTy
 freshPoly' (ArrTy x y) = ArrTy <$> freshPoly' x <*> freshPoly' y
 freshPoly' (ListTy tys) = ListTy <$> mapM freshPoly' tys
 freshPoly' (EitherTy tys) = EitherTy <$> mapM freshPoly' tys
+freshPoly' (ObjectTy i xs) = do
+  xs' <- mapM (\(key, val) -> do { x <- freshPoly' val ; return (key, x) }) (HashMap.toList xs)
+  return (ObjectTy i (HashMap.fromList xs'))
 
 freshPoly :: TyKind -> TypeInferer TyKind
 freshPoly ty = evalStateT (freshPoly' ty) HashMap.empty
@@ -271,6 +283,28 @@ inferType' (List xs pos) = do
               (TyLit (SymLit "match") SymTy pos1:unifiedExpr:unifiedPatterns)
               (unify constraints retTy)
               pos)
+    Lit (SymLit ".") pos1 -> do
+      let Lit (SymLit propertyName) _ = xs !! 2
+      let expr = xs !! 1
+      typedExpr <- inferType' expr
+      let exprTy = Util.typeof typedExpr
+      i <- gensym
+      x <- gensym
+      _1 %= HashMap.insert propertyName (VarTy x)
+      typedProp <- inferType' (xs !! 2)
+      let expected = ObjectTy [i] (HashMap.singleton propertyName (VarTy x))
+      _3 %= (Equal expected exprTy (UnexpectedType expected exprTy (Util.whereIs typedExpr)) :)
+      unifyEnv
+      constraints <- use _3
+      let unifiedExpr = Util.mapTyKind (unify constraints) typedExpr
+      let unifiedProp = Util.mapTyKind (unify constraints) typedProp
+      return
+        (Util.mapTyKind
+          (unify constraints)
+          (TyList
+            [TyLit (SymLit ".") SymTy pos1, unifiedExpr, unifiedProp]
+            (VarTy x)
+            pos))
     _ -> do
       let func = head xs
       let args = tail xs
@@ -307,6 +341,10 @@ subst _ _ NumTy = NumTy
 subst i x (ArrTy y z) = ArrTy (subst i x y) (subst i x z)
 subst i x (ListTy xs) = ListTy (map (subst i x) xs)
 subst i x (EitherTy xs) = EitherTy (map (subst i x) xs)
+subst i x@(ObjectTy j ys) (ObjectTy k xs)
+  | elem i k = ObjectTy (j ++ k) (HashMap.union xs ys)
+  | otherwise = ObjectTy k (HashMap.map (subst i x) xs)
+subst i x (ObjectTy j xs) = ObjectTy j (HashMap.map (subst i x) xs)
 
 substConstraint :: Variable -> TyKind -> Constraint -> Constraint
 substConstraint i y (Equal ty1 ty2 absurd) = Equal (subst i y ty1) (subst i y ty2) (substAbsurd i y absurd)
@@ -399,6 +437,16 @@ unify' (Equal s t absurd:c)
                 case fst r of
                   [] -> r
                   _ -> head results
+              (ObjectTy k xs, ObjectTy l ys) -> do
+                let xKeys = HashMap.keys xs
+                let yKeys = HashMap.keys ys
+                if any (\x -> elem x yKeys) xKeys
+                  then do
+                    let (absurds, substitution) = unify' c
+                    (absurd:absurds, substitution)
+                  else do
+                    let (absurds, substitution) = unify' c
+                    (absurds, substitution . foldl (\f v -> subst v t . f) id k . foldl (\f v -> subst v s . f) id l)
               (RecTy _ s1, RecTy _ t1) -> do
                 unify' (Equal s1 t1 absurd:c)
               (RecTy k s1, _) ->

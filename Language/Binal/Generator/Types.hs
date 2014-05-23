@@ -39,6 +39,10 @@ flatJSAST' (StmtExprJSAST x) = [StmtExprJSAST (flatJSAST x)]
 flatJSAST' (ProgramJSAST xs) = [ProgramJSAST (concatMap flatJSAST' xs)]
 
 flatJSAST :: JSAST -> JSAST
+flatJSAST (BlockJSAST xs) =
+  case concatMap flatJSAST' xs of
+    [] -> BlockJSAST []
+    ys -> BlockJSAST ys
 flatJSAST x =
   case flatJSAST' x of
     [] -> BlockJSAST []

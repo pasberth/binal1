@@ -65,6 +65,7 @@ data TyKind
   | NumTy
   | ArrTy TyKind TyKind
   | ListTy [TyKind]
+  | EitherTy [TyKind]
   deriving (Eq)
 
 instance Show TyKind where
@@ -75,7 +76,8 @@ instance Show TyKind where
   show IntTy = "int"
   show NumTy = "number"
   show (ArrTy src tgt) = "(-> " ++ show src ++ " " ++ show tgt ++ ")"
-  show (ListTy xs) = "(" ++ concat (List.intersperse " " (map show xs)) ++ ")"
+  show (ListTy xs) = "(/\\" ++ concat (List.intersperse " " (map show xs)) ++ ")"
+  show (EitherTy xs) = "(\\/" ++ concat (List.intersperse " " (map show xs)) ++ ")"
 
 data SyntaxError
   = KeywordUsedAsVariable

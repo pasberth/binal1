@@ -55,6 +55,10 @@ examineForms (List xs pos) = do
           let pattern = xs !! 1
           let body = xs !! 2
           examineFormOfParams pattern ++ examineForms body
+    Lit (SymLit "match") _ -> do
+      if length xs < 3
+        then [UnexpectedArity 3 (length xs) pos]
+        else concatMap examineForms (tail xs)
     _ -> concatMap examineForms xs
 
 examineNames' :: AST -> State (HashSet.HashSet String) [NotInScope]
@@ -95,6 +99,9 @@ examineNames' (List xs _) = do
       let env' = foldr HashSet.insert env (Util.flatSymbols pattern)
       put env'
       examineNames' body
+    Lit (SymLit "match") _ -> do
+      rs <- mapM examineNames' (tail xs)
+      return (concat rs)
     _ -> do
       rs <- mapM examineNames' xs
       return (concat rs)
@@ -146,6 +153,7 @@ freshPoly' IntTy = return IntTy
 freshPoly' NumTy = return NumTy
 freshPoly' (ArrTy x y) = ArrTy <$> freshPoly' x <*> freshPoly' y
 freshPoly' (ListTy tys) = ListTy <$> mapM freshPoly' tys
+freshPoly' (EitherTy tys) = EitherTy <$> mapM freshPoly' tys
 
 freshPoly :: TyKind -> TypeInferer TyKind
 freshPoly ty = evalStateT (freshPoly' ty) HashMap.empty
@@ -242,6 +250,27 @@ inferType' (List xs pos) = do
                 [TyLit (SymLit "letrec") SymTy pos1, unifiedPattern, unifiedBody]
                 (ListTy [])
                 pos)
+    Lit (SymLit "match") pos1 -> do
+      expr <- inferType' (xs !! 1)
+      patterns <- mapM inferType' (drop 2 xs)
+      syms <- mapM (\_ -> (,) <$> gensym <*> gensym) patterns
+      forM_ (zip patterns syms) $ \(pat, (x, y)) -> do
+        let patTy = Util.typeof pat
+        let expected = ArrTy (VarTy x) (VarTy y)
+        _3 %= (Equal expected patTy (UnexpectedType expected patTy (Util.whereIs pat)) :)
+      let exprTy = Util.typeof expr
+      let srcTys = map (\(x, _) -> VarTy x) syms
+      let expected = EitherTy srcTys
+      let retTy = EitherTy (map (\(_, y) -> VarTy y) syms)
+      _3 %= (Equal expected exprTy (UnexpectedType expected exprTy (Util.whereIs expr)) :)
+      unifyEnv
+      constraints <- use _3
+      let unifiedExpr = Util.mapTyKind (unify constraints) expr
+      let unifiedPatterns = map (Util.mapTyKind (unify constraints)) patterns
+      return (TyList
+              (TyLit (SymLit "match") SymTy pos1:unifiedExpr:unifiedPatterns)
+              (unify constraints retTy)
+              pos)
     _ -> do
       let func = head xs
       let args = tail xs
@@ -277,6 +306,7 @@ subst _ _ IntTy = IntTy
 subst _ _ NumTy = NumTy
 subst i x (ArrTy y z) = ArrTy (subst i x y) (subst i x z)
 subst i x (ListTy xs) = ListTy (map (subst i x) xs)
+subst i x (EitherTy xs) = EitherTy (map (subst i x) xs)
 
 substConstraint :: Variable -> TyKind -> Constraint -> Constraint
 substConstraint i y (Equal ty1 ty2 absurd) = Equal (subst i y ty1) (subst i y ty2) (substAbsurd i y absurd)

@@ -24,6 +24,8 @@ library
     , lens
     , unordered-containers
     , utf8-string
+    , text
+    , aeson
     , trifecta
     , ansi-terminal
     , haskeline
@@ -39,6 +41,9 @@ library
     , Language.Binal.Util.TypedAST
     , Language.Binal.Parser
     , Language.Binal.Verifier
+    , Language.Binal.Generator
+    , Language.Binal.Generator.Types
+    , Language.Binal.Generator.Simple
     , Language.Binal.CLI
     , Language.Binal.REPL
 

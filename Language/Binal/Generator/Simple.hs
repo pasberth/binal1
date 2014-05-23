@@ -48,8 +48,8 @@ generateFuncBody tast =
       case last xs of
         ExprStmtJSAST x -> BlockJSAST (init xs ++ [RetJSAST x])
         _ -> BlockJSAST xs
-    ExprStmtJSAST x -> RetJSAST x
-    x -> x
+    ExprStmtJSAST x -> BlockJSAST [RetJSAST x]
+    x -> BlockJSAST [x]
 
 generateStmt :: TypedAST -> JSAST
 generateStmt (TyList (TyLit (SymLit "seq") _ _:xs) _ _) = do

@@ -492,8 +492,7 @@ unify' (Equal s t absurd:c)
                 let yKeys = HashMap.keys ys
                 if any (\x -> elem x yKeys) xKeys
                   then do
-                    let (absurds, substitution) = unify' c
-                    (absurd:absurds, substitution)
+                    unify' (Subtype s t absurd:c)
                   else do
                     let (absurds, substitution) = unify' c
                     (absurds, substitution . foldl (\f v -> subst v t . f) id k . foldl (\f v -> subst v s . f) id l)

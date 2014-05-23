@@ -95,7 +95,9 @@ data SyntaxError
 
 data NotInScope = NotInScope String Where
 
-data Constraint = Equal TyKind TyKind Absurd
+data Constraint
+  = Equal TyKind TyKind Absurd
+  | Subtype TyKind TyKind Absurd
 
 data Absurd = UnexpectedType TyKind TyKind Where
   deriving (Eq)

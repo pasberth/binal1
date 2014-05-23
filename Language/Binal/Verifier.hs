@@ -344,7 +344,7 @@ inferType' (List xs pos) = do
       let argsTy = Util.flatListTy (ListTy (map Util.typeof typedArgs))
       x <- gensym
       let expected = ArrTy argsTy (VarTy x)
-      _3 %= (Equal expected funcTy (UnexpectedType expected funcTy (Util.whereIs typedFunc)) :)
+      _3 %= (Subtype funcTy expected (UnexpectedType expected funcTy (Util.whereIs typedFunc)) :)
       unifyEnv
       constraints <- use _3
       let unifiedFunc = Util.mapTyKind (unify constraints) typedFunc
@@ -378,6 +378,7 @@ subst i x (ObjectTy j xs) = ObjectTy j (HashMap.map (subst i x) xs)
 
 substConstraint :: Variable -> TyKind -> Constraint -> Constraint
 substConstraint i y (Equal ty1 ty2 absurd) = Equal (subst i y ty1) (subst i y ty2) (substAbsurd i y absurd)
+substConstraint i y (Subtype ty1 ty2 absurd) = Subtype (subst i y ty1) (subst i y ty2) (substAbsurd i y absurd)
 
 substAbsurd :: Variable -> TyKind -> Absurd -> Absurd
 substAbsurd i y (UnexpectedType ty1 ty2 pos) = UnexpectedType (subst i y ty1) (subst i y ty2) pos
@@ -390,6 +391,25 @@ cantUnify = fst . unify'
 
 unify' :: [Constraint] -> ([Absurd], TyKind -> TyKind)
 unify' [] = ([], id)
+unify' (Subtype s t absurd:c)
+  = case (s, t) of
+      (ArrTy s1 s2, ArrTy t1 t2) ->
+        unify' (Subtype t1 s1 absurd:Subtype s2 t2 absurd:c)
+      (ObjectTy _ xs, ObjectTy _ ys) -> do
+        let xKeys = HashMap.keys xs
+        let yKeys = HashMap.keys ys
+        if all (\x -> elem x xKeys) yKeys
+          then do
+            let c' = map (\key -> Subtype
+                            (Maybe.fromJust (HashMap.lookup key xs))
+                            (Maybe.fromJust (HashMap.lookup key ys))
+                            absurd) yKeys
+            unify' (c'++c)
+          else do
+            let (absurds, substitution) = unify' c
+            (absurd:absurds, substitution)
+      _ -> do
+        unify' (Equal s t absurd:c)
 unify' (Equal s t absurd:c)
   | s == t = unify' c
   | otherwise = do
@@ -421,7 +441,7 @@ unify' (Equal s t absurd:c)
           else
             case (s, t) of
               (ArrTy s1 s2, ArrTy t1 t2) ->
-                unify' (Equal s1 t1 absurd:Equal s2 t2 absurd:c)
+                unify' (Equal t1 s1 absurd:Equal s2 t2 absurd:c)
               (ListTy [], _) -> do
                 let (absurds, substitution) = unify' c
                 (absurd:absurds, substitution)

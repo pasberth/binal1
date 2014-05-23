@@ -9,6 +9,10 @@ keywords = HashSet.fromList
             [ "lambda"
             , "seq"
             , "let"
+            , "letrec"
+            , "match"
+            , "object"
+            , "."
             ]
 
 primitives :: HashSet.HashSet String

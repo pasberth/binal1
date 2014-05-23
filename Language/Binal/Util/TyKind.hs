@@ -55,6 +55,21 @@ flatListTy (ListTy tys) = case flatListTy' tys of
   tys' -> ListTy tys'
 flatListTy (EitherTy xs) = EitherTy (map flatListTy xs)
 
+flatEitherTy' :: Variable -> [TyKind] -> [TyKind]
+flatEitherTy' _ [] = []
+flatEitherTy' i xs = do
+  List.nub (concatMap (\x -> case x of
+                        VarTy j
+                          | i == j -> []
+                          | otherwise -> [VarTy j]
+                        ty -> [ty]) xs)
+
+flatEitherTy :: Variable -> TyKind -> TyKind
+flatEitherTy i (EitherTy xs) = case flatEitherTy' i xs of
+  [ty] -> ty
+  tys -> EitherTy tys
+flatEitherTy _ ty = ty
+
 showTy' :: TyKind -> State (HashMap.HashMap Variable String, [String]) String
 showTy' (VarTy i) = do
   (mp, varList) <- get

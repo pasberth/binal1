@@ -330,24 +330,26 @@ unify' (Equal s t absurd:c)
     let i = Maybe.fromJust tmp1
     let j = Maybe.fromJust tmp2
     if Maybe.isJust tmp1
-      then
-        if not (elem i (Util.freeVariables t))
+      then do
+        let t' = Util.flatEitherTy i t
+        if not (elem i (Util.freeVariables t'))
           then do
-            let (absurds, substitution) = unify' (map (substConstraint i t) c)
-            (absurds, substitution . subst i t)
+            let (absurds, substitution) = unify' (map (substConstraint i t') c)
+            (absurds, substitution . subst i t')
           else do
-            let (absurds, substitution) = unify' (map (substConstraint i (RecTy i t)) c)
-            (absurds, substitution . subst i (RecTy i t))
+            let (absurds, substitution) = unify' (map (substConstraint i (RecTy i t')) c)
+            (absurds, substitution . subst i (RecTy i t'))
       else
         if Maybe.isJust tmp2
           then do
-            if not (elem j (Util.freeVariables s))
+            let s' = Util.flatEitherTy j s
+            if not (elem j (Util.freeVariables s'))
               then do
-                let (absurds, substitution) = unify' (map (substConstraint j s) c)
-                (absurds, substitution . subst j s)
+                let (absurds, substitution) = unify' (map (substConstraint j s') c)
+                (absurds, substitution . subst j s')
               else do
-                let (absurds, substitution) = unify' (map (substConstraint j (RecTy j s)) c)
-                (absurds, substitution . subst j (RecTy j s))
+                let (absurds, substitution) = unify' (map (substConstraint j (RecTy j s')) c)
+                (absurds, substitution . subst j (RecTy j s'))
           else
             case (s, t) of
               (ArrTy s1 s2, ArrTy t1 t2) ->

@@ -377,20 +377,30 @@ unify' (Equal s t absurd:c)
                   unify' (map (\(a,b) -> Equal a b absurd) (zip xs1 ys1)
                           ++ [Equal xs2 ys2 absurd]
                           ++ c)
+              (EitherTy ss, _) -> do
+                let results = map (\s1 -> unify' (Equal s1 t absurd:c)) ss
+                let r = foldl1 (\(absurds1, substitution1) (absurds2, substitution2) ->
+                          case absurds1 of
+                            [] -> (absurds1, substitution1)
+                            _ -> (absurds2, substitution2)) results
+                case fst r of
+                  [] -> r
+                  _ -> head results
+              (_, EitherTy ts) -> do
+                let results = map (\t1 -> unify' (Equal s t1 absurd:c)) ts
+                let r = foldl1 (\(absurds1, substitution1) (absurds2, substitution2) ->
+                                  case absurds1 of
+                                    [] -> (absurds1, substitution1)
+                                    _ -> (absurds2, substitution2)) results
+                case fst r of
+                  [] -> r
+                  _ -> head results
               (RecTy _ s1, RecTy _ t1) -> do
                 unify' (Equal s1 t1 absurd:c)
-              (RecTy k s1, _)
-                | Util.tyLength s1 < Util.tyLength t -> do
-                  unify' (Equal (subst k s s1) t absurd:c)
-                | otherwise -> do
-                  let (absurds, substitution) = unify' c
-                  (absurd:absurds, substitution)
-              (_, RecTy k t1)
-                | Util.tyLength t1 < Util.tyLength s -> do
-                  unify' (Equal s (subst k t t1) absurd:c)
-                | otherwise -> do
-                  let (absurds, substitution) = unify' c
-                  (absurd:absurds, substitution)
+              (RecTy k s1, _) ->
+                unify' (Equal (subst k s s1) t absurd:c)
+              (_, RecTy k t1) ->
+                unify' (Equal s (subst k t t1) absurd:c)
               _ -> do
                 let (absurds, substitution) = unify' c
                 (absurd:absurds, substitution)

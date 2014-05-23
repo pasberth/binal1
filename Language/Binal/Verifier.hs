@@ -59,6 +59,17 @@ examineForms (List xs pos) = do
       if length xs < 3
         then [UnexpectedArity 3 (length xs) pos]
         else concatMap examineForms (tail xs)
+    Lit (SymLit "object") _ -> do
+      if odd (length (tail xs))
+        then [UnexpectedArity (length (tail xs) + 1) (length (tail xs)) pos]
+        else do
+          let symbols = Maybe.catMaybes (map (\(x,i) -> if even i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))
+          let exprs = Maybe.catMaybes (map (\(x,i) -> if odd i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))
+          let r1 = concatMap
+                    (\x -> case x of
+                      Lit (SymLit _) _ -> []
+                      _ -> [Malformed (Util.whereIsAST x)]) symbols
+          r1 ++ concatMap examineForms exprs
     Lit (SymLit ".") _ -> do
       if length xs /= 3
         then [UnexpectedArity 3 (length xs) pos]
@@ -108,6 +119,10 @@ examineNames' (List xs _) = do
       examineNames' body
     Lit (SymLit "match") _ -> do
       rs <- mapM examineNames' (tail xs)
+      return (concat rs)
+    Lit (SymLit "object") _ -> do
+      let exprs = Maybe.catMaybes (map (\(x,i) -> if odd i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))
+      rs <- mapM examineNames' exprs
       return (concat rs)
     Lit (SymLit ".") _ -> do
       examineNames' (xs !! 1)
@@ -283,6 +298,21 @@ inferType' (List xs pos) = do
               (TyLit (SymLit "match") SymTy pos1:unifiedExpr:unifiedPatterns)
               (unify constraints retTy)
               pos)
+    Lit (SymLit "object") pos1 -> do
+      let symbols = Maybe.catMaybes (map (\(x,i) -> if even i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))
+      let exprs = Maybe.catMaybes (map (\(x,i) -> if odd i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))
+      let propertyNames = Maybe.catMaybes (map (\x -> case x of
+                                                  Lit (SymLit s) _ -> Just s
+                                                  _ -> Nothing) symbols)
+      typedExprs <- mapM inferType' exprs
+      let tys = map Util.typeof typedExprs
+      i <- gensym
+      let ty = ObjectTy [i] (HashMap.fromList (zip propertyNames tys))
+      return
+        (TyList
+          (TyLit (SymLit "object") SymTy pos1:typedExprs)
+          ty
+          pos)
     Lit (SymLit ".") pos1 -> do
       let Lit (SymLit propertyName) _ = xs !! 2
       let expr = xs !! 1

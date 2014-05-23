@@ -354,10 +354,12 @@ unify' (Equal s t absurd:c)
             case (s, t) of
               (ArrTy s1 s2, ArrTy t1 t2) ->
                 unify' (Equal s1 t1 absurd:Equal s2 t2 absurd:c)
-              (ListTy [], _) ->
-                unify' c
-              (_, ListTy []) ->
-                unify' c
+              (ListTy [], _) -> do
+                let (absurds, substitution) = unify' c
+                (absurd:absurds, substitution)
+              (_, ListTy []) -> do
+                let (absurds, substitution) = unify' c
+                (absurd:absurds, substitution)
               (ListTy xs, ListTy ys)
                 | length xs == length ys ->
                   unify' (map (\(a,b) -> Equal a b absurd) (zip xs ys) ++ c)

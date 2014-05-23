@@ -96,10 +96,10 @@ showTy' (ArrTy ty1 ty2) = do
   return ("(-> " ++ ty1S ++ " " ++ ty2S ++ ")")
 showTy' (ListTy xs) = do
   ss <- mapM showTy' xs
-  return ("(/\\ " ++ concat (List.intersperse " " ss) ++ ")")
+  return ("(" ++ concat (List.intersperse " " ss) ++ ")")
 showTy' (EitherTy xs) = do
   ss <- mapM showTy' xs
-  return ("(\\/ " ++ concat (List.intersperse " " ss) ++ ")")
+  return ("(| " ++ concat (List.intersperse " " ss) ++ ")")
 
 showTy :: TyKind -> String
 showTy ty = evalState (showTy' ty) (HashMap.empty, map (\ch -> [ch]) ['a'..'z'])

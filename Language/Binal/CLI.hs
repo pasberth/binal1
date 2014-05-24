@@ -32,6 +32,8 @@ generateInterface (TyList (TyLit (SymLit "let") _ _:param:_:[]) _ _)
   = "(val " ++ generateIdent param ++ " " ++ generateType (Util.typeof param) ++ ")"
 generateInterface (TyList (TyLit (SymLit "letrec") _ _:param:_:[]) _ _)
   = "(val " ++ generateIdent param ++ " " ++ generateType (Util.typeof param) ++ ")"
+generateInterface (TyList (TyLit (SymLit "assume") _ _:param:[]) _ _)
+  = "(val " ++ generateIdent param ++ " " ++ generateType (Util.typeof param) ++ ")"
 generateInterface _ = ""
 
 generateIdent :: TypedAST -> String

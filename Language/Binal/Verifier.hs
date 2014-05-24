@@ -77,6 +77,13 @@ examineForms (List xs pos) = do
           case xs !! 2 of
             Lit (SymLit _) _ -> examineForms (xs !! 1)
             _ -> Malformed (Util.whereIsAST (xs !! 2)) : examineForms (xs !! 1)
+    Lit (SymLit "assume") _ -> do
+      if length xs /= 2
+        then [UnexpectedArity 2 (length xs) pos]
+        else
+          case xs !! 1 of
+            Lit (SymLit _) _ -> []
+            _ -> [Malformed (Util.whereIsAST (xs !! 1))]
     _ -> concatMap examineForms xs
 
 examineNames' :: AST -> State (HashSet.HashSet String) [NotInScope]
@@ -126,6 +133,11 @@ examineNames' (List xs _) = do
       return (concat rs)
     Lit (SymLit ".") _ -> do
       examineNames' (xs !! 1)
+    Lit (SymLit "assume") _ -> do
+      let Lit (SymLit s) _ = xs !! 1
+      let env' = HashSet.insert s env
+      put env'
+      return []
     _ -> do
       rs <- mapM examineNames' xs
       return (concat rs)
@@ -335,6 +347,14 @@ inferType' (List xs pos) = do
             [TyLit (SymLit ".") SymTy pos1, unifiedExpr, unifiedProp]
             (VarTy x)
             pos))
+    Lit (SymLit "assume") pos1 -> do
+      let Lit (SymLit sym) pos2 = xs !! 1
+      var <- gensym
+      _1 %= HashMap.insert sym (VarTy var)
+      return (TyList
+                [ TyLit (SymLit "assume") SymTy pos1,
+                  TyLit (SymLit sym) (VarTy var) pos2
+                ] (ListTy []) pos)
     _ -> do
       let func = head xs
       let args = tail xs
@@ -355,7 +375,7 @@ inferType :: AST -> ([Absurd], TypedAST)
 inferType ast = do
   let (typedAST, (_, _, constraints, _)) = runState (inferType' ast) (Util.initialTypeEnv, Util.initialVarList, [], Util.initialPolyEnv)
   let absurds = cantUnify constraints
-  (List.nub absurds, Util.mapTyKind Util.flatListTy typedAST)
+  (List.nub absurds, Util.mapTyKind (unify constraints . Util.flatListTy) typedAST)
 
 subst :: Variable -> TyKind -> TyKind -> TyKind
 subst i x y@(VarTy j)

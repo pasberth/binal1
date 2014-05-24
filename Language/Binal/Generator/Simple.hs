@@ -78,6 +78,8 @@ generateStmt (TyList (TyLit (SymLit "letrec") _ _:pattern:value:[]) _ _) = do
       let tmpAssign = ExprStmtJSAST (AssignJSAST (IdentJSAST "_tmp") value')
       let assign = assignValues pattern (IdentJSAST "_tmp")
       BlockJSAST [declare, tmpDeclare, tmpAssign, assign]
+generateStmt (TyList (TyLit (SymLit "assume") _ _:_:[]) _ _) = do
+  BlockJSAST []
 generateStmt x = ExprStmtJSAST (generateExpr x)
 
 generateExpr :: TypedAST -> JSAST
@@ -105,6 +107,8 @@ generateExpr (TyList (TyLit (SymLit "object") _ _:xs) _ _) = do
 generateExpr (TyList (TyLit (SymLit ".") _ _:obj:TyLit (SymLit s) _ _:[]) _ _) = do
   let obj' = generateExpr obj
   MemberJSAST obj' s
+generateExpr x@(TyList (TyLit (SymLit "assume") _ _:_:[]) _ _) = do
+  StmtExprJSAST (generateStmt x)
 generateExpr (TyList (f:args) _ _) = do
   let f' = generateExpr f
   let args' = map generateExpr args

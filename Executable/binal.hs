@@ -16,8 +16,8 @@ main = do
           maybeTypedAST <- B.checkAST ast
           case maybeTypedAST of
             Just typedAST -> do
+              -- putStrLn (B.generateInterface typedAST)
               putStrLn (B.generateString typedAST)
-              --putStrLn (B.generateInterface typedAST)
             Nothing -> do
               return ()
         Nothing -> System.Exit.exitFailure

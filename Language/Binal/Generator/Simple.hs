@@ -101,7 +101,14 @@ generateExpr (TyLit (NumLit i) _ _) = NumLitJSAST i
 generateExpr (TyList (TyLit (SymLit "lambda") _ _:params:body:[]) _ _) = do
   let params' = generateParams params
   let body' = generateFuncBody body
-  FuncLitJSAST params' body'
+  case params' of
+    [] -> FuncLitJSAST [] body'
+    _ -> do
+      let initParams = init params'
+      let lastParam = last params'
+      let sliceCall = CallJSAST (MemberJSAST (MemberJSAST (MemberJSAST (IdentJSAST "Array") "prototype") "slice") "call") [IdentJSAST "arguments", NumLitJSAST (realToFrac (length initParams))]
+      let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (IdentJSAST "arguments") "length") (NumLitJSAST (realToFrac (length params')))) lastParam sliceCall
+      FuncLitJSAST params' (BlockJSAST [ExprStmtJSAST (AssignJSAST lastParam lastCheck), body'])
 generateExpr x@(TyList (TyLit (SymLit "seq") _ _:_) _ _) = do
   StmtExprJSAST (generateStmt x)
 generateExpr x@(TyList (TyLit (SymLit "let") _ _:_) _ _) = do

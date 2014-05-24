@@ -1,0 +1,3 @@
+(assume console)
+(let println (. console log))
+(println "hello world")

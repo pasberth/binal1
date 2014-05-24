@@ -54,3 +54,4 @@ executable binal
   build-depends:
       base
     , binal
+    , filepath

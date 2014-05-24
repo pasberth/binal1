@@ -412,34 +412,90 @@ cantUnify = fst . unify'
 unify' :: [Constraint] -> ([Absurd], TyKind -> TyKind)
 unify' [] = ([], id)
 unify' (Subtype s t absurd:c)
-  = case (s, t) of
-      (ArrTy s1 s2, ArrTy t1 t2) ->
-        unify' (Subtype t1 s1 absurd:Subtype s2 t2 absurd:c)
-      (ObjectTy _ xs, ObjectTy _ ys) -> do
-        let xKeys = HashMap.keys xs
-        let yKeys = HashMap.keys ys
-        if all (\x -> elem x xKeys) yKeys
+  | s == t = unify' c
+  | otherwise = do
+    let tmp1 = Util.extractVarTy s
+    let tmp2 = Util.extractVarTy t
+    let i = Maybe.fromJust tmp1
+    let j = Maybe.fromJust tmp2
+    if Maybe.isJust tmp1
+      then do
+        let t' = Util.flatEitherTy i t
+        if not (elem i (Util.freeVariables t'))
           then do
-            let c' = map (\key -> Subtype
-                            (Maybe.fromJust (HashMap.lookup key xs))
-                            (Maybe.fromJust (HashMap.lookup key ys))
-                            absurd) yKeys
-            unify' (c'++c)
+            let (absurds, substitution) = unify' (map (substConstraint i t') c)
+            (absurds, substitution . subst i t')
           else do
-            let (absurds, substitution) = unify' c
-            (absurd:absurds, substitution)
-      (_, EitherTy ts) -> do
-        let results = map (\t1 -> unify' (Subtype s t1 absurd:c)) ts
-        let r = foldl1 (\(absurds1, substitution1) (absurds2, substitution2) ->
-                          case absurds1 of
-                            [] -> (absurds1, substitution1)
-                            _ -> (absurds2, substitution2)) results
-        case fst r of
-          [] -> r
-          _ -> head results
-
-      _ -> do
-        unify' (Equal s t absurd:c)
+            let (absurds, substitution) = unify' (map (substConstraint i (RecTy i t')) c)
+            (absurds, substitution . subst i (RecTy i t'))
+      else
+        if Maybe.isJust tmp2
+          then do
+            let s' = Util.flatEitherTy j s
+            if not (elem j (Util.freeVariables s'))
+              then do
+                let (absurds, substitution) = unify' (map (substConstraint j s') c)
+                (absurds, substitution . subst j s')
+              else do
+                let (absurds, substitution) = unify' (map (substConstraint j (RecTy j s')) c)
+                (absurds, substitution . subst j (RecTy j s'))
+          else
+            case (s, t) of
+              (ArrTy s1 s2, ArrTy t1 t2) ->
+                unify' (Subtype t1 s1 absurd:Subtype s2 t2 absurd:c)
+              (ListTy [], _) -> do
+                let (absurds, substitution) = unify' c
+                (absurd:absurds, substitution)
+              (_, ListTy []) -> do
+                let (absurds, substitution) = unify' c
+                (absurd:absurds, substitution)
+              (ListTy xs, ListTy ys)
+                | length xs == length ys ->
+                  unify' (map (\(a,b) -> Subtype a b absurd) (zip xs ys) ++ c)
+                | length xs < length ys -> do
+                  let len = length xs - 1
+                  let xs1 = take len xs
+                  let ys1 = take len ys
+                  let xs2 = last xs
+                  let ys2 = ListTy (drop len ys)
+                  unify' (map (\(a,b) -> Subtype a b absurd) (zip xs1 ys1)
+                            ++ [Subtype xs2 ys2 absurd]
+                            ++ c)
+                | length xs > length ys -> do
+                  let len = length ys - 1
+                  let xs1 = take len xs
+                  let ys1 = take len ys
+                  let xs2 = ListTy (drop len xs)
+                  let ys2 = last ys
+                  unify' (map (\(a,b) -> Subtype a b absurd) (zip xs1 ys1)
+                            ++ [Subtype xs2 ys2 absurd]
+                            ++ c)
+              (ObjectTy _ xs, ObjectTy _ ys) -> do
+                let xKeys = HashMap.keys xs
+                let yKeys = HashMap.keys ys
+                if all (\x -> elem x xKeys) yKeys
+                  then do
+                    let c' = map (\key -> Subtype
+                                    (Maybe.fromJust (HashMap.lookup key xs))
+                                    (Maybe.fromJust (HashMap.lookup key ys))
+                                    absurd) yKeys
+                    unify' (c'++c)
+                  else do
+                    let (absurds, substitution) = unify' c
+                    (absurd:absurds, substitution)
+              (_, EitherTy ts) -> do
+                let results = map (\t1 -> unify' (Subtype s t1 absurd:c)) ts
+                let r = foldl1 (\(absurds1, substitution1) (absurds2, substitution2) ->
+                                  case absurds1 of
+                                    [] -> (absurds1, substitution1)
+                                    _ -> (absurds2, substitution2)) results
+                case fst r of
+                  [] -> r
+                  _ -> head results
+              (_, RecTy k t1) ->
+                unify' (Subtype s (subst k t t1) absurd:c)
+              _ -> do
+                unify' (Equal s t absurd:c)
 unify' (Equal s t absurd:c)
   | s == t = unify' c
   | otherwise = do
@@ -510,10 +566,6 @@ unify' (Equal s t absurd:c)
                     (absurds, substitution . foldl (\f v -> subst v t . f) id k . foldl (\f v -> subst v s . f) id l)
               (RecTy _ s1, RecTy _ t1) -> do
                 unify' (Equal s1 t1 absurd:c)
-              (RecTy k s1, _) ->
-                unify' (Equal (subst k s s1) t absurd:c)
-              (_, RecTy k t1) ->
-                unify' (Equal s (subst k t t1) absurd:c)
               _ -> do
                 let (absurds, substitution) = unify' c
                 (absurd:absurds, substitution)

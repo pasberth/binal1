@@ -80,6 +80,17 @@ generateStmt (TyList (TyLit (SymLit "letrec") _ _:pattern:value:[]) _ _) = do
       BlockJSAST [declare, tmpDeclare, tmpAssign, assign]
 generateStmt (TyList (TyLit (SymLit "assume") _ _:_:[]) _ _) = do
   BlockJSAST []
+generateStmt (TyList (TyLit (SymLit "match") ty1 pos:x:xs) _ _) = do
+  let value = generateExpr x
+  let tmpDeclare = DefVarsJSAST ["_tmp"]
+  let tmpAssign = ExprStmtJSAST (AssignJSAST (IdentJSAST "_tmp") value)
+  let tmp = IdentJSAST "_tmp"
+  let exprAndTypes = zip (map (\y -> generateExpr (TyList [y, TyLit (SymLit "_tmp") (Util.typeof x) (Util.whereIs x)] ty1 pos)) xs) (map Util.typeof xs)
+  let fs = map (\(expr, ty) -> case ty of
+                  ArrTy ty' _ -> CondJSAST (generateMatching ty' tmp) expr
+                  _ -> CondJSAST (UnaryJSAST "void" (NumLitJSAST 1)) expr) exprAndTypes
+  let y = ExprStmtJSAST (foldr id (UnaryJSAST "void" (NumLitJSAST 0)) fs)
+  BlockJSAST [tmpDeclare, tmpAssign, y]
 generateStmt x = ExprStmtJSAST (generateExpr x)
 
 generateExpr :: TypedAST -> JSAST
@@ -96,6 +107,8 @@ generateExpr x@(TyList (TyLit (SymLit "seq") _ _:_) _ _) = do
 generateExpr x@(TyList (TyLit (SymLit "let") _ _:_) _ _) = do
   StmtExprJSAST (generateStmt x)
 generateExpr x@(TyList (TyLit (SymLit "letrec") _ _:_) _ _) = do
+  StmtExprJSAST (generateStmt x)
+generateExpr x@(TyList (TyLit (SymLit "match") _ _:_) _ _) = do
   StmtExprJSAST (generateStmt x)
 generateExpr (TyList (TyLit (SymLit "object") _ _:xs) _ _) = do
   let symbols = Maybe.catMaybes (map (\(x,i) -> if even i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))
@@ -114,3 +127,29 @@ generateExpr (TyList (f:args) _ _) = do
   let args' = map generateExpr args
   CallJSAST f' args'
 generateExpr (TyList [] _ _) = undefined
+
+generateMatching :: TyKind -> JSAST -> JSAST
+generateMatching StrTy jast = BinaryJSAST "===" (UnaryJSAST "typeof" jast) (StrLitJSAST "string")
+generateMatching IntTy jast = BinaryJSAST "===" (UnaryJSAST "typeof" jast) (StrLitJSAST "number")
+generateMatching NumTy jast = BinaryJSAST "===" (UnaryJSAST "typeof" jast) (StrLitJSAST "number")
+generateMatching (ListTy []) jast = jast
+generateMatching (ListTy xs) jast = do
+  let conds = map (\(x, i) ->
+                generateMatching x (ComputedMemberJSAST jast (NumLitJSAST (realToFrac i))))
+                (zip (init xs) ([0..] :: [Int]))
+  let sliceCall = CallJSAST (MemberJSAST jast "slice") [NumLitJSAST (realToFrac (length xs - 1))]
+  let lastGet = ComputedMemberJSAST jast (NumLitJSAST (realToFrac (length xs - 1)))
+  let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST jast "length") (NumLitJSAST (realToFrac (length xs)))) lastGet sliceCall
+  let cond1 = generateMatching (last xs) lastCheck
+  BinaryJSAST "&&" (BinaryJSAST "===" (UnaryJSAST "typeof" jast) (StrLitJSAST "object")) (foldr (BinaryJSAST "&&") cond1 conds)
+generateMatching (VarTy _) jast = jast
+generateMatching (RecTy _ ty) jast = generateMatching ty jast
+generateMatching (EitherTy xs) jast = do
+  let isVar (VarTy _) = True
+      isVar _ = False
+  if any isVar xs
+    then jast
+    else do
+      let conds = map (\x -> generateMatching x jast) xs
+      foldr1 (BinaryJSAST "||") conds
+generateMatching ty _ = UnaryJSAST "void" (StrLitJSAST (show ty))

@@ -20,6 +20,9 @@ data JSAST
   | ExprStmtJSAST JSAST
   | StmtExprJSAST JSAST
   | ProgramJSAST [JSAST]
+  | CondJSAST JSAST JSAST JSAST
+  | UnaryJSAST String JSAST
+  | BinaryJSAST String JSAST JSAST
 
 flatJSAST' :: JSAST -> [JSAST]
 flatJSAST' (BlockJSAST xs) = concatMap flatJSAST' xs
@@ -37,6 +40,9 @@ flatJSAST' (RetJSAST x) = [RetJSAST (flatJSAST x)]
 flatJSAST' (ExprStmtJSAST x) = [ExprStmtJSAST (flatJSAST x)]
 flatJSAST' (StmtExprJSAST x) = [StmtExprJSAST (flatJSAST x)]
 flatJSAST' (ProgramJSAST xs) = [ProgramJSAST (concatMap flatJSAST' xs)]
+flatJSAST' (CondJSAST x y z) = [CondJSAST (flatJSAST x) (flatJSAST y) (flatJSAST z)]
+flatJSAST' (UnaryJSAST x y) = [UnaryJSAST x (flatJSAST y)]
+flatJSAST' (BinaryJSAST x y z) = [BinaryJSAST x (flatJSAST y) (flatJSAST z)]
 
 flatJSAST :: JSAST -> JSAST
 flatJSAST (BlockJSAST xs) =
@@ -136,4 +142,25 @@ instance ToJSON JSAST where
     = object [
         Text.pack "type" .= "Program",
         Text.pack "body" .= xs
+      ]
+  toJSON (CondJSAST x y z)
+    = object [
+        Text.pack "type" .= "ConditionalExpression",
+        Text.pack "test" .= x,
+        Text.pack "consequent" .= y,
+        Text.pack "alternate" .= z
+      ]
+  toJSON (UnaryJSAST x y)
+    = object [
+        Text.pack "type" .= "UnaryExpression",
+        Text.pack "operator" .= x,
+        Text.pack "argument" .= y,
+        Text.pack "prefix" .= True
+      ]
+  toJSON (BinaryJSAST x y z)
+    = object [
+        Text.pack "type" .= "BinaryExpression",
+        Text.pack "operator" .= x,
+        Text.pack "left" .= y,
+        Text.pack "right" .= z
       ]

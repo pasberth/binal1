@@ -27,7 +27,7 @@ checkAST ast = do
 
 generateInterface :: TypedAST -> String
 generateInterface (TyList (TyLit (SymLit "seq") _ _:xs) _ _)
-  = unlines (map generateInterface xs)
+  = unlines (filter (not . null) (map generateInterface xs))
 generateInterface (TyList (TyLit (SymLit "let") _ _:param:_:[]) _ _)
   = "(val " ++ generateIdent param ++ " " ++ generateType (Util.typeof param) ++ ")"
 generateInterface (TyList (TyLit (SymLit "letrec") _ _:param:_:[]) _ _)

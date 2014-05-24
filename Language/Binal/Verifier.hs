@@ -428,6 +428,16 @@ unify' (Subtype s t absurd:c)
           else do
             let (absurds, substitution) = unify' c
             (absurd:absurds, substitution)
+      (_, EitherTy ts) -> do
+        let results = map (\t1 -> unify' (Subtype s t1 absurd:c)) ts
+        let r = foldl1 (\(absurds1, substitution1) (absurds2, substitution2) ->
+                          case absurds1 of
+                            [] -> (absurds1, substitution1)
+                            _ -> (absurds2, substitution2)) results
+        case fst r of
+          [] -> r
+          _ -> head results
+
       _ -> do
         unify' (Equal s t absurd:c)
 unify' (Equal s t absurd:c)
@@ -489,24 +499,6 @@ unify' (Equal s t absurd:c)
                   unify' (map (\(a,b) -> Equal a b absurd) (zip xs1 ys1)
                           ++ [Equal xs2 ys2 absurd]
                           ++ c)
-              (EitherTy ss, _) -> do
-                let results = map (\s1 -> unify' (Equal s1 t absurd:c)) ss
-                let r = foldl1 (\(absurds1, substitution1) (absurds2, substitution2) ->
-                          case absurds1 of
-                            [] -> (absurds1, substitution1)
-                            _ -> (absurds2, substitution2)) results
-                case fst r of
-                  [] -> r
-                  _ -> head results
-              (_, EitherTy ts) -> do
-                let results = map (\t1 -> unify' (Equal s t1 absurd:c)) ts
-                let r = foldl1 (\(absurds1, substitution1) (absurds2, substitution2) ->
-                                  case absurds1 of
-                                    [] -> (absurds1, substitution1)
-                                    _ -> (absurds2, substitution2)) results
-                case fst r of
-                  [] -> r
-                  _ -> head results
               (ObjectTy k xs, ObjectTy l ys) -> do
                 let xKeys = HashMap.keys xs
                 let yKeys = HashMap.keys ys

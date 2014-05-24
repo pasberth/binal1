@@ -29,6 +29,7 @@ flatListTy' :: [TyKind] -> [TyKind]
 flatListTy' [] = []
 flatListTy' xs = do
   case last xs of
+    ListTy [] -> xs
     ListTy ys -> init xs ++ flatListTy' ys
     _ -> xs
 

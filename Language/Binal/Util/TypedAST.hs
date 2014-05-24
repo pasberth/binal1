@@ -12,10 +12,6 @@ mapTyKind :: (TyKind -> TyKind) -> TypedAST -> TypedAST
 mapTyKind f (TyLit lit ty pos) = TyLit lit (f ty) pos
 mapTyKind f (TyList xs ty pos) = TyList (map (mapTyKind f) xs) (f ty) pos
 
-traverseTyKindM :: Monad m => (TyKind -> m ()) -> TypedAST -> m ()
-traverseTyKindM f (TyLit _ ty _) = f ty
-traverseTyKindM f (TyList xs ty _) = f ty >> mapM_ (traverseTyKindM f) xs
-
 flatLitKindsT :: TypedAST -> [LitKind]
 flatLitKindsT (TyLit lit _ _) = [lit]
 flatLitKindsT (TyList xs _ _) = concatMap flatLitKindsT xs

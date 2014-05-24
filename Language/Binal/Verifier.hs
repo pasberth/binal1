@@ -152,18 +152,18 @@ gensym = do
   return var
 
 makePoly :: TypedAST -> TypeInferer ()
-makePoly tast@(TyLit _ _ _)
-  = Util.traverseTyKindM
+makePoly (TyLit _ ty1 _)
+  = Util.traverseVarTyM
       (\ty -> case ty of
         VarTy i -> _4 %= HashSet.insert i
         _ -> return ())
-      tast
-makePoly tast@(TyList (TyLit (SymLit "lambda") _ _:_) _ _)
-  = Util.traverseTyKindM
+      ty1
+makePoly (TyList (TyLit (SymLit "lambda") _ _:_) ty1 _)
+  = Util.traverseVarTyM
       (\ty -> case ty of
         VarTy i -> _4 %= HashSet.insert i
         _ -> return ())
-      tast
+      ty1
 makePoly _ = return ()
 
 freshPoly' :: TyKind -> StateT (HashMap.HashMap Variable Variable) (State (TypeEnv, [Variable], [Constraint], PolyEnv)) TyKind

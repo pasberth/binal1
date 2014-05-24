@@ -100,3 +100,15 @@ showTy ty = evalState (showTy' ty) (HashMap.empty, map (\ch -> [ch]) ['a'..'z'])
 
 showTy2 :: TyKind -> TyKind -> (String, String)
 showTy2 ty1 ty2 = evalState (do { x <- showTy' ty1; y <- showTy' ty2; return (x, y) }) (HashMap.empty, map (\ch -> [ch]) ['a'..'z'])
+
+traverseVarTyM :: Monad m => (TyKind -> m ()) -> TyKind -> m ()
+traverseVarTyM f ty@(VarTy _) = f ty
+traverseVarTyM _ SymTy = return ()
+traverseVarTyM _ StrTy = return ()
+traverseVarTyM _ IntTy = return ()
+traverseVarTyM _ NumTy = return ()
+traverseVarTyM f (ArrTy ty1 ty2) = traverseVarTyM f ty1 >> traverseVarTyM f ty2
+traverseVarTyM f (ListTy tys) = mapM_ (traverseVarTyM f) tys
+traverseVarTyM f (EitherTy tys) = mapM_ (traverseVarTyM f) tys
+traverseVarTyM f (ObjectTy _ x) = mapM_ (traverseVarTyM f) (HashMap.elems x)
+traverseVarTyM f (RecTy _ ty) = traverseVarTyM f ty

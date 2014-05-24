@@ -443,6 +443,17 @@ unify' (Subtype s t absurd:c)
             case (s, t) of
               (ArrTy s1 s2, ArrTy t1 t2) ->
                 unify' (Subtype t1 s1 absurd:Subtype s2 t2 absurd:c)
+              (_, EitherTy ts) -> do
+                let results = map (\t1 -> unify' (Subtype s t1 absurd:c)) ts
+                let r = foldl1 (\(absurds1, substitution1) (absurds2, substitution2) ->
+                                case absurds1 of
+                                  [] -> (absurds1, substitution1)
+                                  _ -> (absurds2, substitution2)) results
+                case fst r of
+                  [] -> r
+                  _ -> head results
+              (_, RecTy k t1) ->
+                unify' (Subtype s (subst k t t1) absurd:c)
               (ListTy [], _) -> do
                 let (absurds, substitution) = unify' c
                 (absurd:absurds, substitution)
@@ -483,17 +494,6 @@ unify' (Subtype s t absurd:c)
                   else do
                     let (absurds, substitution) = unify' c
                     (absurd:absurds, substitution)
-              (_, EitherTy ts) -> do
-                let results = map (\t1 -> unify' (Subtype s t1 absurd:c)) ts
-                let r = foldl1 (\(absurds1, substitution1) (absurds2, substitution2) ->
-                                  case absurds1 of
-                                    [] -> (absurds1, substitution1)
-                                    _ -> (absurds2, substitution2)) results
-                case fst r of
-                  [] -> r
-                  _ -> head results
-              (_, RecTy k t1) ->
-                unify' (Subtype s (subst k t t1) absurd:c)
               _ -> do
                 unify' (Equal s t absurd:c)
 unify' (Equal s t absurd:c)

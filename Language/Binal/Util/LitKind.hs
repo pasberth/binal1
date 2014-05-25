@@ -10,10 +10,6 @@ extractStr :: LitKind -> Maybe String
 extractStr (StrLit s) = Just s
 extractStr _ = Nothing
 
-extractInt :: LitKind -> Maybe Int
-extractInt (IntLit i) = Just i
-extractInt _ = Nothing
-
 extractNum :: LitKind -> Maybe Double
 extractNum (NumLit n) = Just n
 extractNum _ = Nothing

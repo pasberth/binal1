@@ -60,7 +60,7 @@ numLit :: T.Parser AST
 numLit = do
   (pos, intOrDbl) <- withPosition T.integerOrDouble
   case intOrDbl of
-    Left int -> return (Lit (IntLit (fromInteger int)) pos)
+    Left int -> return (Lit (NumLit (realToFrac int)) pos)
     Right dbl -> return (Lit (NumLit dbl) pos)
 
 list :: T.Parser AST

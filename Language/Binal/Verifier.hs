@@ -93,7 +93,6 @@ examineNames' (Lit (SymLit s) pos) = do
     then return []
     else return [NotInScope s pos]
 examineNames' (Lit (StrLit _) _) = return []
-examineNames' (Lit (IntLit _) _) = return []
 examineNames' (Lit (NumLit _) _) = return []
 examineNames' (List [] _) = return []
 examineNames' (List xs _) = do
@@ -185,7 +184,6 @@ freshPoly' (RecTy i ty) = do
   return (RecTy i' ty')
 freshPoly' SymTy = return SymTy
 freshPoly' StrTy = return StrTy
-freshPoly' IntTy = return IntTy
 freshPoly' NumTy = return NumTy
 freshPoly' (ArrTy x y) = ArrTy <$> freshPoly' x <*> freshPoly' y
 freshPoly' (ListTy tys) = ListTy <$> mapM freshPoly' tys
@@ -216,7 +214,6 @@ inferType' (Lit lit@(SymLit s) pos) = do
   ty <- freshPoly (Maybe.fromJust (HashMap.lookup s env))
   return (TyLit lit ty pos)
 inferType' (Lit lit@(StrLit _) pos) = return (TyLit lit StrTy pos)
-inferType' (Lit lit@(IntLit _) pos) = return (TyLit lit IntTy pos)
 inferType' (Lit lit@(NumLit _) pos) = return (TyLit lit NumTy pos)
 inferType' (List xs pos) = do
   let instr = xs !! 0
@@ -386,7 +383,6 @@ subst i x (RecTy j ty)
   | otherwise = RecTy j (subst i x ty)
 subst _ _ SymTy = SymTy
 subst _ _ StrTy = StrTy
-subst _ _ IntTy = IntTy
 subst _ _ NumTy = NumTy
 subst i x (ArrTy y z) = ArrTy (subst i x y) (subst i x z)
 subst i x (ListTy xs) = ListTy (map (subst i x) xs)

@@ -24,13 +24,11 @@ data Where
 data LitKind
   = SymLit String
   | StrLit String
-  | IntLit Int
   | NumLit Double
 
 instance Show LitKind where
   show (SymLit s) = s
   show (StrLit s) = show s
-  show (IntLit i) = show i
   show (NumLit i) = show i
 
 data AST
@@ -61,7 +59,6 @@ data TyKind
   | RecTy Variable TyKind
   | SymTy
   | StrTy
-  | IntTy
   | NumTy
   | ArrTy TyKind TyKind
   | ListTy [TyKind]
@@ -74,7 +71,6 @@ instance Show TyKind where
   show (RecTy i ty) = "(recur '" ++ show i ++ " " ++ show ty ++ ")"
   show SymTy = "symbol"
   show StrTy = "string"
-  show IntTy = "int"
   show NumTy = "number"
   show (ArrTy src tgt) = "(-> " ++ show src ++ " " ++ show tgt ++ ")"
   show (ListTy xs) = "(" ++ unwords (map show xs) ++ ")"

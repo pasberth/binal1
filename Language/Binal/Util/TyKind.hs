@@ -10,7 +10,6 @@ freeVariables (VarTy i) = [i]
 freeVariables (RecTy i ty) = filter (/=i) (freeVariables ty)
 freeVariables SymTy = []
 freeVariables StrTy = []
-freeVariables IntTy = []
 freeVariables NumTy = []
 freeVariables (ArrTy x y) = freeVariables x ++ freeVariables y
 freeVariables (ListTy xs) = concatMap freeVariables xs
@@ -38,7 +37,6 @@ flatListTy (VarTy i) = VarTy i
 flatListTy (RecTy i ty) = RecTy i (flatListTy ty)
 flatListTy SymTy = SymTy
 flatListTy StrTy = StrTy
-flatListTy IntTy = IntTy
 flatListTy NumTy = NumTy
 flatListTy (ArrTy ty1 ty2) = ArrTy (flatListTy ty1) (flatListTy ty2)
 flatListTy (ListTy tys) = case flatListTy' tys of
@@ -80,7 +78,6 @@ showTy' (RecTy i ty) = do
   return ("(recur " ++ x ++ " " ++ y ++ ")")
 showTy' SymTy = return "symbol"
 showTy' StrTy = return "string"
-showTy' IntTy = return "int"
 showTy' NumTy = return "number"
 showTy' (ArrTy ty1 ty2) = do
   ty1S <- showTy' ty1
@@ -106,7 +103,6 @@ traverseVarTyM :: Monad m => (TyKind -> m ()) -> TyKind -> m ()
 traverseVarTyM f ty@(VarTy _) = f ty
 traverseVarTyM _ SymTy = return ()
 traverseVarTyM _ StrTy = return ()
-traverseVarTyM _ IntTy = return ()
 traverseVarTyM _ NumTy = return ()
 traverseVarTyM f (ArrTy ty1 ty2) = traverseVarTyM f ty1 >> traverseVarTyM f ty2
 traverseVarTyM f (ListTy tys) = mapM_ (traverseVarTyM f) tys

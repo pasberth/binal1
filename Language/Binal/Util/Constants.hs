@@ -23,9 +23,8 @@ initialVarList = [1..]
 
 initialTypeEnv :: TypeEnv
 initialTypeEnv = HashMap.fromList
-                  [ ("str.add@", ArrTy (ListTy [StrTy, StrTy]) StrTy)
-                  , ("int.add@", ArrTy (ListTy [IntTy, IntTy]) IntTy)
-                  , ("num.add@", ArrTy (ListTy [NumTy, NumTy]) NumTy)
+                  [ ("str.add", ArrTy (ListTy [StrTy, StrTy]) StrTy)
+                  , ("num.add", ArrTy (ListTy [NumTy, NumTy]) NumTy)
                   , ("require", ArrTy StrTy (VarTy 0))
                   ]
 

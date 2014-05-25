@@ -51,7 +51,6 @@ generateParams (TyList xs _ _) = map (uncurry generateParams1) (zip xs [0..])
 assignValues :: TypedAST -> JSAST -> JSAST
 assignValues (TyLit (SymLit s) _ _) tmp = ExprStmtJSAST (AssignJSAST (IdentJSAST (GUtil.toJSSafeSymbol s)) tmp)
 assignValues (TyLit (StrLit _) _ _) _ = BlockJSAST []
-assignValues (TyLit (IntLit _) _ _) _ = BlockJSAST []
 assignValues (TyLit (NumLit _) _ _) _ = BlockJSAST []
 assignValues (TyList xs _ _) tmp
   = BlockJSAST
@@ -126,7 +125,6 @@ generateStmt x = ExprStmtJSAST <$> generateExpr x
 generateExpr :: TypedAST -> State [Int] JSAST
 generateExpr (TyLit (SymLit s) _ _) = return (IdentJSAST (GUtil.toJSSafeSymbol s))
 generateExpr (TyLit (StrLit s) _ _) = return (StrLitJSAST s)
-generateExpr (TyLit (IntLit i) _ _) = return (NumLitJSAST (realToFrac i))
 generateExpr (TyLit (NumLit i) _ _) = return (NumLitJSAST i)
 generateExpr (TyList (TyLit (SymLit "lambda") _ _:params:body:[]) _ _) = do
   let params' = generateParams params
@@ -236,7 +234,6 @@ generateExpr (TyList [] _ _) = undefined
 
 generateMatching :: TyKind -> JSAST -> JSAST
 generateMatching StrTy jast = BinaryJSAST "===" (UnaryJSAST "typeof" jast) (StrLitJSAST "string")
-generateMatching IntTy jast = BinaryJSAST "===" (UnaryJSAST "typeof" jast) (StrLitJSAST "number")
 generateMatching NumTy jast = BinaryJSAST "===" (UnaryJSAST "typeof" jast) (StrLitJSAST "number")
 generateMatching (ListTy []) jast = jast
 generateMatching (ListTy xs) jast = do

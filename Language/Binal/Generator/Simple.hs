@@ -45,7 +45,7 @@ generateProgram tast =
 generateFuncBody :: TypedAST -> JSAST
 generateFuncBody tast = do
   let (result, varList) = runState (generateStmt tast) [0..]
-  let declareList = map (\i -> "_tmp" ++ show i) [0..(negate (head varList))]
+  let declareList = map (\i -> "_tmp" ++ show i) [0..(head varList - 1)]
   let tmpDeclare = case declareList of
                     [] -> BlockJSAST []
                     _ -> DefVarsJSAST declareList

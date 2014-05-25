@@ -123,7 +123,8 @@ generateStmt (TyList (TyLit (SymLit "assume") _ _:_:[]) _ _) = do
 generateStmt x = ExprStmtJSAST <$> generateExpr x
 
 generateExpr :: TypedAST -> State [Int] JSAST
-generateExpr (TyLit (SymLit s) _ _) = return (IdentJSAST (GUtil.toJSSafeSymbol s))
+generateExpr (TyLit (SymLit s) _ _) = case s of
+    _ -> return (IdentJSAST (GUtil.toJSSafeSymbol s))
 generateExpr (TyLit (StrLit s) _ _) = return (StrLitJSAST s)
 generateExpr (TyLit (NumLit i) _ _) = return (NumLitJSAST i)
 generateExpr (TyList (TyLit (SymLit "lambda") _ _:params:body:[]) _ _) = do
@@ -175,6 +176,10 @@ generateExpr (TyList (TyLit (SymLit "match") ty1 pos:x:xs) _ _) = do
   if isTmpAssign
     then return (SeqJSAST [tmpAssign, y])
     else return y
+generateExpr (TyList (TyLit (SymLit "num.add") _ _:x:y:[]) _ _) = do
+  BinaryJSAST "+" <$> generateExpr x <*> generateExpr y
+generateExpr (TyList (TyLit (SymLit "str.add") _ _:x:y:[]) _ _) = do
+  BinaryJSAST "+" <$> generateExpr x <*> generateExpr y
 generateExpr (TyList (f:args) _ _) = do
   f' <- generateExpr f
   case args of

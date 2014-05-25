@@ -131,8 +131,33 @@ generateExpr x@(TyList (TyLit (SymLit "assume") _ _:_:[]) _ _) = do
   StmtExprJSAST (generateStmt x)
 generateExpr (TyList (f:args) _ _) = do
   let f' = generateExpr f
-  let args' = map generateExpr args
-  CallJSAST f' args'
+  case args of
+    [] -> CallJSAST f' []
+    _ -> do
+      let lastArg = last args
+      let initArgs' = map generateExpr (init args)
+      let lastArg' = generateExpr lastArg
+      case lastArg' of
+        MemberJSAST this name -> do
+          let tmpThis = IdentJSAST "_tmp_this"
+          let tmp = IdentJSAST "_tmp"
+          let tmpDeclare = DefVarsJSAST ["_tmp", "_tmp_this"]
+          let tmpThisAssign = ExprStmtJSAST (AssignJSAST tmpThis this)
+          let tmpAssign = ExprStmtJSAST (AssignJSAST tmp (MemberJSAST tmpThis name))
+          let normalCall = CallJSAST f' (initArgs' ++ [tmp])
+          let alternateCall = CallJSAST (MemberJSAST f' "apply") ([tmpThis] ++ initArgs' ++ [IdentJSAST "_tmp"])
+          let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (IdentJSAST "Array"))
+          let call = callTest alternateCall normalCall
+          StmtExprJSAST (BlockJSAST [tmpDeclare, tmpThisAssign, tmpAssign, ExprStmtJSAST call])
+        _ -> do
+          let tmp = IdentJSAST "_tmp"
+          let tmpDeclare = DefVarsJSAST ["_tmp"]
+          let tmpAssign = ExprStmtJSAST (AssignJSAST tmp lastArg')
+          let normalCall = CallJSAST f' (initArgs' ++ [tmp])
+          let alternateCall = CallJSAST (MemberJSAST f' "apply") ([IdentJSAST "this"] ++ initArgs' ++ [IdentJSAST "_tmp"])
+          let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (IdentJSAST "Array"))
+          let call = callTest alternateCall normalCall
+          StmtExprJSAST (BlockJSAST [tmpDeclare, tmpAssign, ExprStmtJSAST call])
 generateExpr (TyList [] _ _) = undefined
 
 generateMatching :: TyKind -> JSAST -> JSAST

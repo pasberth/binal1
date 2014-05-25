@@ -136,8 +136,18 @@ instance ToJSON JSAST where
   toJSON (ExprStmtJSAST x)
     = object [ Text.pack "type" .= "ExpressionStatement",
                Text.pack "expression" .= x ]
-  toJSON (StmtExprJSAST x)
-    = toJSON (CallJSAST (FuncLitJSAST [] x) [])
+  toJSON (StmtExprJSAST body)
+    = do
+      let body' = case body of
+                    BlockJSAST [] -> BlockJSAST []
+                    BlockJSAST xs ->
+                      case last xs of
+                        ExprStmtJSAST x -> BlockJSAST (init xs ++ [RetJSAST x])
+                        _ -> BlockJSAST xs
+                    ExprStmtJSAST x -> BlockJSAST [RetJSAST x]
+                    x -> BlockJSAST [x]
+
+      toJSON (CallJSAST (FuncLitJSAST [] body') [])
   toJSON (ProgramJSAST xs)
     = object [
         Text.pack "type" .= "Program",

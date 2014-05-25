@@ -373,10 +373,15 @@ inferType' (List xs pos) = do
       let leftTy = Util.typeof left
       let expected = MutableTy (Util.typeof right)
       _3 %= (Subtype expected leftTy (UnexpectedType expected leftTy (Util.whereIs left)) :)
-      return (TyList
+      unifyEnv
+      constraints <- use _3
+      return
+        (Util.mapTyKind
+          (unify constraints)
+          (TyList
                 [TyLit (SymLit ":=") SymTy pos1, left, right]
                 (ListTy [])
-                pos)
+                pos))
     Lit (SymLit "assume") pos1 -> do
       let Lit (SymLit sym) pos2 = xs !! 1
       var <- gensym

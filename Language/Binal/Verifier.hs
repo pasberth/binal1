@@ -409,8 +409,8 @@ inferType' (List xs pos) = do
 inferType :: AST -> ([Absurd], TypedAST)
 inferType ast = do
   let (typedAST, (_, _, constraints, _)) = runState (inferType' ast) (Util.initialTypeEnv, Util.initialVarList, [], Util.initialPolyEnv)
-  let absurds = cantUnify constraints
-  (List.nub absurds, Util.mapTyKind (unify constraints . Util.flatListTy) typedAST)
+  let absurds = cantUnify (reverse constraints)
+  (List.nub absurds, Util.mapTyKind (unify (reverse constraints) . Util.flatListTy) typedAST)
 
 subst :: Variable -> TyKind -> TyKind -> TyKind
 subst i x y@(VarTy j)

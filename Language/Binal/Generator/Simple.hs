@@ -1,5 +1,7 @@
-module Language.Binal.Generator.Simple where
+module Language.Binal.Generator.Simple(generateString) where
 
+import           Control.Applicative
+import           Control.Monad.State
 import qualified Data.Aeson          as Aeson
 import qualified Data.Maybe          as Maybe
 import qualified Data.HashMap.Strict as HashMap
@@ -36,128 +38,142 @@ generateString = BS.toString . Aeson.encode . Aeson.toJSON . flatJSAST . generat
 
 generateProgram :: TypedAST -> JSAST
 generateProgram tast =
-  case generateStmt tast of
+  case evalState (generateStmt tast) [0..] of
     BlockJSAST xs -> ProgramJSAST xs
     x -> x
 
 generateFuncBody :: TypedAST -> JSAST
-generateFuncBody tast =
-  case generateStmt tast of
+generateFuncBody tast = do
+  let (result, varList) = runState (generateStmt tast) [0..]
+  let declareList = map (\i -> "_tmp" ++ show i) [0..(negate (head varList))]
+  let tmpDeclare = case declareList of
+                    [] -> BlockJSAST []
+                    _ -> DefVarsJSAST declareList
+  case result of
     BlockJSAST [] -> BlockJSAST []
     BlockJSAST xs ->
       case last xs of
-        ExprStmtJSAST x -> BlockJSAST (init xs ++ [RetJSAST x])
-        _ -> BlockJSAST xs
-    ExprStmtJSAST x -> BlockJSAST [RetJSAST x]
-    x -> BlockJSAST [x]
+        ExprStmtJSAST x -> BlockJSAST (tmpDeclare : (init xs ++ [RetJSAST x]))
+        _ -> BlockJSAST (tmpDeclare:xs)
+    ExprStmtJSAST x -> BlockJSAST [tmpDeclare,RetJSAST x]
+    x -> BlockJSAST [tmpDeclare, x]
 
-generateStmt :: TypedAST -> JSAST
+gensym :: State [Int] Int
+gensym = do
+  varList <- get
+  modify tail
+  return (head varList)
+
+generateStmt :: TypedAST -> State [Int] JSAST
 generateStmt (TyList (TyLit (SymLit "seq") _ _:xs) _ _) = do
-  BlockJSAST (map generateStmt xs)
+  BlockJSAST <$> mapM generateStmt xs
 generateStmt (TyList (TyLit (SymLit "let") _ _:pattern:value:[]) _ _) = do
   let declare = generateDeclare pattern
-  let value' = generateExpr value
+  value' <- generateExpr value
   case pattern of
     (TyLit (SymLit s) _ _) -> do
       let assign = ExprStmtJSAST (AssignJSAST (IdentJSAST s) value')
-      BlockJSAST [declare, assign]
+      return (BlockJSAST [declare, assign])
     _ -> do
-      let tmpDeclare = DefVarsJSAST ["_tmp"]
-      let tmpAssign = ExprStmtJSAST (AssignJSAST (IdentJSAST "_tmp") value')
-      let assign = assignValues pattern (IdentJSAST "_tmp")
-      BlockJSAST [declare, tmpDeclare, tmpAssign, assign]
+      i <- gensym
+      let tmp = IdentJSAST ("_tmp" ++ show i)
+      let tmpAssign = ExprStmtJSAST (AssignJSAST tmp value')
+      let assign = assignValues pattern tmp
+      return (BlockJSAST [declare, tmpAssign, assign])
 generateStmt (TyList (TyLit (SymLit "letrec") _ _:pattern:value:[]) _ _) = do
   let declare = generateDeclare pattern
-  let value' = generateExpr value
+  value' <- generateExpr value
   case pattern of
     (TyLit (SymLit s) _ _) -> do
       let assign = ExprStmtJSAST (AssignJSAST (IdentJSAST s) value')
-      BlockJSAST [declare, assign]
+      return (BlockJSAST [declare, assign])
     _ -> do
-      let tmpDeclare = DefVarsJSAST ["_tmp"]
-      let tmpAssign = ExprStmtJSAST (AssignJSAST (IdentJSAST "_tmp") value')
-      let assign = assignValues pattern (IdentJSAST "_tmp")
-      BlockJSAST [declare, tmpDeclare, tmpAssign, assign]
+      i <- gensym
+      let tmp = IdentJSAST ("_tmp" ++ show i)
+      let tmpAssign = ExprStmtJSAST (AssignJSAST tmp value')
+      let assign = assignValues pattern tmp
+      return (BlockJSAST [declare, tmpAssign, assign])
 generateStmt (TyList (TyLit (SymLit "assume") _ _:_:[]) _ _) = do
-  BlockJSAST []
-generateStmt (TyList (TyLit (SymLit "match") ty1 pos:x:xs) _ _) = do
-  let value = generateExpr x
-  let tmpDeclare = DefVarsJSAST ["_tmp"]
-  let tmpAssign = ExprStmtJSAST (AssignJSAST (IdentJSAST "_tmp") value)
-  let tmp = IdentJSAST "_tmp"
-  let exprAndTypes = zip (map (\y -> generateExpr (TyList [y, TyLit (SymLit "_tmp") (Util.typeof x) (Util.whereIs x)] ty1 pos)) xs) (map Util.typeof xs)
-  let fs = map (\(expr, ty) -> case ty of
-                  ArrTy ty' _ -> CondJSAST (generateMatching ty' tmp) expr
-                  _ -> CondJSAST (UnaryJSAST "void" (NumLitJSAST 1)) expr) exprAndTypes
-  let y = ExprStmtJSAST (foldr id (UnaryJSAST "void" (NumLitJSAST 0)) fs)
-  BlockJSAST [tmpDeclare, tmpAssign, y]
-generateStmt x = ExprStmtJSAST (generateExpr x)
+  return (BlockJSAST [])
+generateStmt x = ExprStmtJSAST <$> generateExpr x
 
-generateExpr :: TypedAST -> JSAST
-generateExpr (TyLit (SymLit s) _ _) = IdentJSAST s
-generateExpr (TyLit (StrLit s) _ _) = StrLitJSAST s
-generateExpr (TyLit (IntLit i) _ _) = NumLitJSAST (realToFrac i)
-generateExpr (TyLit (NumLit i) _ _) = NumLitJSAST i
+generateExpr :: TypedAST -> State [Int] JSAST
+generateExpr (TyLit (SymLit s) _ _) = return (IdentJSAST s)
+generateExpr (TyLit (StrLit s) _ _) = return (StrLitJSAST s)
+generateExpr (TyLit (IntLit i) _ _) = return (NumLitJSAST (realToFrac i))
+generateExpr (TyLit (NumLit i) _ _) = return (NumLitJSAST i)
 generateExpr (TyList (TyLit (SymLit "lambda") _ _:params:body:[]) _ _) = do
   let params' = generateParams params
   let body' = generateFuncBody body
   case params' of
-    [] -> FuncLitJSAST [] body'
+    [] -> return (FuncLitJSAST [] body')
     _ -> do
       let initParams = init params'
       let lastParam = last params'
       let sliceCall = CallJSAST (MemberJSAST (MemberJSAST (MemberJSAST (IdentJSAST "Array") "prototype") "slice") "call") [IdentJSAST "arguments", NumLitJSAST (realToFrac (length initParams))]
       let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (IdentJSAST "arguments") "length") (NumLitJSAST (realToFrac (length params')))) lastParam sliceCall
-      FuncLitJSAST params' (BlockJSAST [ExprStmtJSAST (AssignJSAST lastParam lastCheck), body'])
+      return (FuncLitJSAST params' (BlockJSAST [ExprStmtJSAST (AssignJSAST lastParam lastCheck), body']))
 generateExpr x@(TyList (TyLit (SymLit "seq") _ _:_) _ _) = do
-  StmtExprJSAST (generateStmt x)
+  StmtExprJSAST <$> generateStmt x
 generateExpr x@(TyList (TyLit (SymLit "let") _ _:_) _ _) = do
-  StmtExprJSAST (generateStmt x)
+  StmtExprJSAST <$> generateStmt x
 generateExpr x@(TyList (TyLit (SymLit "letrec") _ _:_) _ _) = do
-  StmtExprJSAST (generateStmt x)
-generateExpr x@(TyList (TyLit (SymLit "match") _ _:_) _ _) = do
-  StmtExprJSAST (generateStmt x)
+  StmtExprJSAST <$> generateStmt x
 generateExpr (TyList (TyLit (SymLit "object") _ _:xs) _ _) = do
   let symbols = Maybe.catMaybes (map (\(x,i) -> if even i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))
   let exprs = Maybe.catMaybes (map (\(x,i) -> if odd i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))
   let propertyNames = Maybe.catMaybes (map (\x -> case x of
                                               TyLit (SymLit s) _ _ -> Just s
                                               _ -> Nothing) symbols)
-  ObjLitJSAST (HashMap.fromList (zip propertyNames (map generateExpr exprs)))
+  zs <- mapM generateExpr exprs
+  return (ObjLitJSAST (HashMap.fromList (zip propertyNames zs)))
 generateExpr (TyList (TyLit (SymLit ".") _ _:obj:TyLit (SymLit s) _ _:[]) _ _) = do
-  let obj' = generateExpr obj
-  MemberJSAST obj' s
+  obj' <- generateExpr obj
+  return (MemberJSAST obj' s)
 generateExpr x@(TyList (TyLit (SymLit "assume") _ _:_:[]) _ _) = do
-  StmtExprJSAST (generateStmt x)
+  StmtExprJSAST <$> generateStmt x
+generateExpr (TyList (TyLit (SymLit "match") ty1 pos:x:xs) _ _) = do
+  value <- generateExpr x
+  i <- gensym
+  let tmp = IdentJSAST ("_tmp" ++ show i)
+  let tmpAssign = AssignJSAST tmp value
+  zs <- mapM (\y -> generateExpr (TyList [y, TyLit (SymLit ("_tmp" ++ show i)) (Util.typeof x) (Util.whereIs x)] ty1 pos)) xs
+  let exprAndTypes = zip zs (map Util.typeof xs)
+  let fs = map (\(expr, ty) -> case ty of
+                  ArrTy ty' _ -> CondJSAST (generateMatching ty' tmp) expr
+                  _ -> CondJSAST (UnaryJSAST "void" (NumLitJSAST 1)) expr) exprAndTypes
+  let y = foldr id (UnaryJSAST "void" (NumLitJSAST 0)) fs
+  return (SeqJSAST [tmpAssign, y])
 generateExpr (TyList (f:args) _ _) = do
-  let f' = generateExpr f
+  f' <- generateExpr f
   case args of
-    [] -> CallJSAST f' []
+    [] -> return (CallJSAST f' [])
     _ -> do
       let lastArg = last args
-      let initArgs' = map generateExpr (init args)
-      let lastArg' = generateExpr lastArg
+      initArgs' <- mapM generateExpr (init args)
+      lastArg' <- generateExpr lastArg
       case lastArg' of
         MemberJSAST this name -> do
-          let tmpThis = IdentJSAST "_tmp_this"
-          let tmp = IdentJSAST "_tmp1"
-          let tmpDeclare = DefVarsJSAST ["_tmp1", "_tmp_this"]
-          let tmpThisAssign = ExprStmtJSAST (AssignJSAST tmpThis this)
-          let tmpAssign = ExprStmtJSAST (AssignJSAST tmp (MemberJSAST tmpThis name))
+          i <- gensym
+          j <- gensym
+          let tmpThis = IdentJSAST ("_tmp" ++ show j)
+          let tmp = IdentJSAST ("_tmp" ++ show i)
+          let tmpThisAssign = AssignJSAST tmpThis this
+          let tmpAssign = AssignJSAST tmp (MemberJSAST tmpThis name)
           let normalCall = CallJSAST f' (initArgs' ++ [tmp])
           let alternateCall = CallJSAST (MemberJSAST f' "apply") ([tmpThis] ++ [(CallJSAST (MemberJSAST (ArrLitJSAST initArgs') "concat") [tmp])])
           let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (IdentJSAST "Array"))
           let call = callTest alternateCall normalCall
-          StmtExprJSAST (BlockJSAST [tmpDeclare, tmpThisAssign, tmpAssign, ExprStmtJSAST call])
+          return (SeqJSAST [tmpThisAssign, tmpAssign, call])
         _ -> do
-          let tmp = IdentJSAST "_tmp1"
-          let tmpDeclare = DefVarsJSAST ["_tmp1"]
-          let tmpAssign = ExprStmtJSAST (AssignJSAST tmp lastArg')
+          i <- gensym
+          let tmp = IdentJSAST ("_tmp" ++ show i)
+          let tmpAssign = AssignJSAST tmp lastArg'
           let normalCall = CallJSAST f' (initArgs' ++ [tmp])
           let alternateCall = CallJSAST (MemberJSAST f' "apply") ([IdentJSAST "this"] ++ [(CallJSAST (MemberJSAST (ArrLitJSAST initArgs') "concat") [tmp])])
           let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (IdentJSAST "Array"))
           let call = callTest alternateCall normalCall
-          StmtExprJSAST (BlockJSAST [tmpDeclare, tmpAssign, ExprStmtJSAST call])
+          return (SeqJSAST [tmpAssign, call])
 generateExpr (TyList [] _ _) = undefined
 
 generateMatching :: TyKind -> JSAST -> JSAST

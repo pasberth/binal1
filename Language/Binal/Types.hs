@@ -64,6 +64,7 @@ data TyKind
   | ListTy [TyKind]
   | EitherTy [TyKind]
   | ObjectTy [Variable] (HashMap.HashMap String TyKind)
+  | MutableTy TyKind
   deriving (Eq)
 
 instance Show TyKind where
@@ -77,6 +78,7 @@ instance Show TyKind where
   show (EitherTy xs) = "(| " ++ unwords (map show xs) ++ ")"
   show (ObjectTy _ m) = "(obj " ++ showm ++ ")" where
     showm = unwords (concatMap (\(key, value) -> [key, show value]) (HashMap.toList m))
+  show (MutableTy ty) = "(mutable " ++ show ty ++ ")"
 
 data SyntaxError
   = KeywordUsedAsVariable

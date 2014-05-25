@@ -77,6 +77,25 @@ examineForms (List xs pos) = do
           case xs !! 2 of
             Lit (SymLit _) _ -> examineForms (xs !! 1)
             _ -> Malformed (Util.whereIsAST (xs !! 2)) : examineForms (xs !! 1)
+    Lit (SymLit ":=") _ -> do
+      let ex1 it@(Lit (SymLit _) _) = examineForms it
+          ex1 (Lit _ pos1) = [Malformed pos1]
+          ex1 it@(List [] _) = examineForms it
+          ex1 (List ys pos1) = do
+            let instr1 = ys !! 0
+            case instr1 of
+              Lit (SymLit ".") _ -> do
+                if length ys /= 3
+                  then [UnexpectedArity 3 (length ys) pos1]
+                  else
+                    case ys !! 2 of
+                      Lit (SymLit _) _ -> ex1 (ys !! 1)
+                      _ -> Malformed (Util.whereIsAST (ys !! 2)) : ex1 (ys !! 1)
+              _ -> [Malformed pos1]
+      if length xs /= 3
+        then [UnexpectedArity 3 (length xs) pos]
+        else
+          ex1 (xs !! 1) ++ examineForms (xs !! 2)
     Lit (SymLit "assume") _ -> do
       if length xs /= 2
         then [UnexpectedArity 2 (length xs) pos]
@@ -132,6 +151,9 @@ examineNames' (List xs _) = do
       return (concat rs)
     Lit (SymLit ".") _ -> do
       examineNames' (xs !! 1)
+    Lit (SymLit ":=") _ -> do
+      rs <- mapM examineNames' (tail xs)
+      return (concat rs)
     Lit (SymLit "assume") _ -> do
       let Lit (SymLit s) _ = xs !! 1
       let env' = HashSet.insert s env
@@ -191,6 +213,7 @@ freshPoly' (EitherTy tys) = EitherTy <$> mapM freshPoly' tys
 freshPoly' (ObjectTy i xs) = do
   xs' <- mapM (\(key, val) -> do { x <- freshPoly' val ; return (key, x) }) (HashMap.toList xs)
   return (ObjectTy i (HashMap.fromList xs'))
+freshPoly' (MutableTy ty) = MutableTy <$> freshPoly' ty
 
 freshPoly :: TyKind -> TypeInferer TyKind
 freshPoly ty = evalStateT (freshPoly' ty) HashMap.empty
@@ -344,6 +367,16 @@ inferType' (List xs pos) = do
             [TyLit (SymLit ".") SymTy pos1, unifiedExpr, unifiedProp]
             (VarTy x)
             pos))
+    Lit (SymLit ":=") pos1 -> do
+      left <- inferType' (xs !! 1)
+      right <- inferType' (xs !! 2)
+      let leftTy = Util.typeof left
+      let expected = MutableTy (Util.typeof right)
+      _3 %= (Subtype expected leftTy (UnexpectedType expected leftTy (Util.whereIs left)) :)
+      return (TyList
+                [TyLit (SymLit ":=") SymTy pos1, left, right]
+                (ListTy [])
+                pos)
     Lit (SymLit "assume") pos1 -> do
       let Lit (SymLit sym) pos2 = xs !! 1
       var <- gensym
@@ -391,6 +424,7 @@ subst i x@(ObjectTy j ys) (ObjectTy k xs)
   | elem i k = ObjectTy (j ++ k) (HashMap.union xs ys)
   | otherwise = ObjectTy k (HashMap.map (subst i x) xs)
 subst i x (ObjectTy j xs) = ObjectTy j (HashMap.map (subst i x) xs)
+subst i x (MutableTy ty) = MutableTy (subst i x ty)
 
 substConstraint :: Variable -> TyKind -> Constraint -> Constraint
 substConstraint i y (Equal ty1 ty2 absurd) = Equal (subst i y ty1) (subst i y ty2) (substAbsurd i y absurd)
@@ -440,6 +474,8 @@ unify' (Subtype s t absurd:c)
               (ArrTy s1 s2, ArrTy t1 t2) ->
                 unify' (Subtype t1 s1 absurd:Subtype s2 t2 absurd:c)
               (RecTy _ s1, RecTy _ t1) -> do
+                unify' (Subtype s1 t1 absurd:c)
+              (MutableTy s1, MutableTy t1) ->
                 unify' (Subtype s1 t1 absurd:c)
               (_, EitherTy ts) -> do
                 let results = map (\t1 -> unify' (Subtype s t1 absurd:c)) ts

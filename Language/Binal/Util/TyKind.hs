@@ -15,6 +15,7 @@ freeVariables (ArrTy x y) = freeVariables x ++ freeVariables y
 freeVariables (ListTy xs) = concatMap freeVariables xs
 freeVariables (EitherTy xs) = concatMap freeVariables xs
 freeVariables (ObjectTy _ m) = concatMap freeVariables (HashMap.elems m)
+freeVariables (MutableTy ty) = freeVariables ty
 
 extractVarTy :: TyKind -> Maybe Variable
 extractVarTy (VarTy i) = Just i
@@ -44,6 +45,7 @@ flatListTy (ListTy tys) = case flatListTy' tys of
   tys' -> ListTy tys'
 flatListTy (EitherTy xs) = EitherTy (map flatListTy xs)
 flatListTy (ObjectTy i m) = ObjectTy i (HashMap.map flatListTy m)
+flatListTy (MutableTy ty) = MutableTy (flatListTy ty)
 
 flatEitherTy' :: Variable -> [TyKind] -> [TyKind]
 flatEitherTy' _ [] = []
@@ -92,6 +94,9 @@ showTy' (EitherTy xs) = do
 showTy' (ObjectTy _ m) = do
   ss <- mapM (\(key, val) -> do { x <- showTy' val; return [key, x]}) (HashMap.toList m)
   return ("(obj " ++ unwords (concat ss) ++ ")")
+showTy' (MutableTy ty) = do
+  s <- showTy' ty
+  return ("(mutable " ++ s ++ ")")
 
 showTy :: TyKind -> String
 showTy ty = evalState (showTy' ty) (HashMap.empty, map (\ch -> [ch]) ['a'..'z'])
@@ -109,3 +114,4 @@ traverseVarTyM f (ListTy tys) = mapM_ (traverseVarTyM f) tys
 traverseVarTyM f (EitherTy tys) = mapM_ (traverseVarTyM f) tys
 traverseVarTyM f (ObjectTy _ x) = mapM_ (traverseVarTyM f) (HashMap.elems x)
 traverseVarTyM f (RecTy _ ty) = traverseVarTyM f ty
+traverseVarTyM f (MutableTy ty) = traverseVarTyM f ty

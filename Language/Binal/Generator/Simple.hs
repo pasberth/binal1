@@ -155,6 +155,10 @@ generateExpr (TyList (TyLit (SymLit "object") _ _:xs) _ _) = do
 generateExpr (TyList (TyLit (SymLit ".") _ _:obj:TyLit (SymLit s) _ _:[]) _ _) = do
   obj' <- generateExpr obj
   return (MemberJSAST obj' s)
+generateExpr (TyList (TyLit (SymLit ":=") _ _:x:y:[]) _ _) = do
+  x' <- generateExpr x
+  y' <- generateExpr y
+  return (AssignJSAST x' y')
 generateExpr x@(TyList (TyLit (SymLit "assume") _ _:_:[]) _ _) = do
   StmtExprJSAST <$> generateStmt x
 generateExpr (TyList (TyLit (SymLit "match") ty1 pos:x:xs) _ _) = do

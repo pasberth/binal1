@@ -10,6 +10,31 @@ import           Language.Binal.Types
 import           Language.Binal.Generator.Types
 import qualified Language.Binal.Util as Util
 
+humanReadable :: JSAST -> JSAST
+humanReadable (RetJSAST (SeqJSAST xs)) = BlockJSAST ((map (humanReadable . ExprStmtJSAST) (init xs)) ++ [humanReadable (RetJSAST (last xs))])
+humanReadable (RetJSAST (CondJSAST x y z)) = IfJSAST (humanReadable x) (humanReadable (RetJSAST y)) (humanReadable (RetJSAST z))
+humanReadable (BlockJSAST xs) = BlockJSAST (map humanReadable xs)
+humanReadable x@(DefVarsJSAST _) = x
+humanReadable (AssignJSAST x y) = AssignJSAST (humanReadable x) (humanReadable y)
+humanReadable (MemberJSAST x y) = MemberJSAST (humanReadable x) y
+humanReadable (ComputedMemberJSAST x y) = ComputedMemberJSAST (humanReadable x) (humanReadable y)
+humanReadable (ObjLitJSAST x) = ObjLitJSAST (HashMap.map humanReadable x)
+humanReadable (ArrLitJSAST x) =  ArrLitJSAST (map humanReadable x)
+humanReadable (FuncLitJSAST x y) = FuncLitJSAST (map humanReadable x) (humanReadable y)
+humanReadable x@(IdentJSAST _) = x
+humanReadable x@(StrLitJSAST _) = x
+humanReadable x@(NumLitJSAST _) = x
+humanReadable (CallJSAST x y) = CallJSAST (humanReadable x) (map humanReadable y)
+humanReadable (RetJSAST x) = RetJSAST (humanReadable x)
+humanReadable (ExprStmtJSAST x) = ExprStmtJSAST (humanReadable x)
+humanReadable (StmtExprJSAST x) = StmtExprJSAST (humanReadable x)
+humanReadable (ProgramJSAST xs) = ProgramJSAST (map humanReadable xs)
+humanReadable (CondJSAST x y z) = CondJSAST (humanReadable x) (humanReadable y) (humanReadable z)
+humanReadable (IfJSAST x y z) = IfJSAST (humanReadable x) (humanReadable y) (humanReadable z)
+humanReadable (BinaryJSAST x y z) = BinaryJSAST x (humanReadable y) (humanReadable z)
+humanReadable (UnaryJSAST x y) = UnaryJSAST x (humanReadable y)
+humanReadable (SeqJSAST xs) = SeqJSAST (map humanReadable xs)
+
 generateDeclare :: TypedAST -> JSAST
 generateDeclare = DefVarsJSAST . Util.flatSymbolsT
 
@@ -34,7 +59,7 @@ assignValues (TyList xs _ _) tmp
           (ComputedMemberJSAST tmp (NumLitJSAST (realToFrac i)))) (zip xs ([0..] :: [Int])))
 
 generateString :: TypedAST -> String
-generateString = BS.toString . Aeson.encode . Aeson.toJSON . flatJSAST . generateProgram
+generateString = BS.toString . Aeson.encode . Aeson.toJSON . flatJSAST . humanReadable . flatJSAST . generateProgram
 
 generateProgram :: TypedAST -> JSAST
 generateProgram tast =

@@ -22,6 +22,7 @@ data JSAST
   | StmtExprJSAST JSAST
   | ProgramJSAST [JSAST]
   | CondJSAST JSAST JSAST JSAST
+  | IfJSAST JSAST JSAST JSAST
   | UnaryJSAST String JSAST
   | BinaryJSAST String JSAST JSAST
   | SeqJSAST [JSAST]
@@ -44,6 +45,7 @@ flatJSAST' (ExprStmtJSAST x) = [ExprStmtJSAST (flatJSAST x)]
 flatJSAST' (StmtExprJSAST x) = [StmtExprJSAST (flatJSAST x)]
 flatJSAST' (ProgramJSAST xs) = [ProgramJSAST (concatMap flatJSAST' xs)]
 flatJSAST' (CondJSAST x y z) = [CondJSAST (flatJSAST x) (flatJSAST y) (flatJSAST z)]
+flatJSAST' (IfJSAST x y z) = [IfJSAST (flatJSAST x) (flatJSAST y) (flatJSAST z)]
 flatJSAST' (UnaryJSAST x y) = [UnaryJSAST x (flatJSAST y)]
 flatJSAST' (BinaryJSAST x y z) = [BinaryJSAST x (flatJSAST y) (flatJSAST z)]
 flatJSAST' (SeqJSAST x) =  [SeqJSAST (map flatJSAST x)]
@@ -167,6 +169,13 @@ instance ToJSON JSAST where
   toJSON (CondJSAST x y z)
     = object [
         Text.pack "type" .= "ConditionalExpression",
+        Text.pack "test" .= x,
+        Text.pack "consequent" .= y,
+        Text.pack "alternate" .= z
+      ]
+  toJSON (IfJSAST x y z)
+    = object [
+        Text.pack "type" .= "IfStatement",
         Text.pack "test" .= x,
         Text.pack "consequent" .= y,
         Text.pack "alternate" .= z

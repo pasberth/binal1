@@ -201,8 +201,12 @@ generateExpr (TyList (f:args) _ _) = do
           let call = callTest alternateCall normalCall
           return (SeqJSAST [tmpThisAssign, tmpAssign, call])
         _ -> do
-          iF <- gensym
-          let tmpF = IdentJSAST ("_tmp" ++ show iF)
+          (isTmpAssignF, tmpF) <-
+            case f' of
+              IdentJSAST _ -> return (False, f')
+              _ -> do
+                i <- gensym
+                return (True, IdentJSAST ("_tmp" ++ show i))
           (isTmpAssign, tmp) <-
             case lastArg' of
               IdentJSAST _ -> return (False ,lastArg')
@@ -218,9 +222,15 @@ generateExpr (TyList (f:args) _ _) = do
           let alternateCall = CallJSAST (MemberJSAST tmpF "apply") ([IdentJSAST "this"] ++ [noName])
           let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (IdentJSAST "Array"))
           let call = callTest alternateCall normalCall
-          if isTmpAssign
-            then return (SeqJSAST [tmpAssignF, tmpAssign, call])
-            else return (SeqJSAST [tmpAssignF, call])
+          if isTmpAssignF
+            then
+              if isTmpAssign
+                then return (SeqJSAST [tmpAssignF, tmpAssign, call])
+                else return (SeqJSAST [tmpAssignF, call])
+            else
+              if isTmpAssign
+                then return (SeqJSAST [tmpAssign, call])
+                else return call
 generateExpr (TyList [] _ _) = undefined
 
 generateMatching :: TyKind -> JSAST -> JSAST

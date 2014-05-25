@@ -43,6 +43,7 @@ library
     , Language.Binal.Verifier
     , Language.Binal.Generator
     , Language.Binal.Generator.Types
+    , Language.Binal.Generator.Util
     , Language.Binal.Generator.Simple
     , Language.Binal.CLI
     , Language.Binal.REPL

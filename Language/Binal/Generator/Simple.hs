@@ -9,6 +9,7 @@ import qualified Data.ByteString.Lazy.UTF8  as BS
 import           Language.Binal.Types
 import           Language.Binal.Generator.Types
 import qualified Language.Binal.Util as Util
+import qualified Language.Binal.Generator.Util as GUtil
 
 humanReadable :: JSAST -> JSAST
 humanReadable (RetJSAST (SeqJSAST xs)) = BlockJSAST ((map (humanReadable . ExprStmtJSAST) (init xs)) ++ [humanReadable (RetJSAST (last xs))])
@@ -36,19 +37,19 @@ humanReadable (UnaryJSAST x y) = UnaryJSAST x (humanReadable y)
 humanReadable (SeqJSAST xs) = SeqJSAST (map humanReadable xs)
 
 generateDeclare :: TypedAST -> JSAST
-generateDeclare = DefVarsJSAST . Util.flatSymbolsT
+generateDeclare = DefVarsJSAST . map GUtil.toJSSafeSymbol . Util.flatSymbolsT
 
 generateParams1 :: TypedAST -> Int -> JSAST
-generateParams1 (TyLit (SymLit s) _ _) _ = IdentJSAST s
+generateParams1 (TyLit (SymLit s) _ _) _ = IdentJSAST (GUtil.toJSSafeSymbol s)
 generateParams1 _ i = IdentJSAST ("_" ++ show i)
 
 generateParams :: TypedAST -> [JSAST]
-generateParams (TyLit (SymLit s) _ _) = [IdentJSAST s]
+generateParams (TyLit (SymLit s) _ _) = [IdentJSAST (GUtil.toJSSafeSymbol s)]
 generateParams (TyLit _ _ _) = []
 generateParams (TyList xs _ _) = map (uncurry generateParams1) (zip xs [0..])
 
 assignValues :: TypedAST -> JSAST -> JSAST
-assignValues (TyLit (SymLit s) _ _) tmp = ExprStmtJSAST (AssignJSAST (IdentJSAST s) tmp)
+assignValues (TyLit (SymLit s) _ _) tmp = ExprStmtJSAST (AssignJSAST (IdentJSAST (GUtil.toJSSafeSymbol s)) tmp)
 assignValues (TyLit (StrLit _) _ _) _ = BlockJSAST []
 assignValues (TyLit (IntLit _) _ _) _ = BlockJSAST []
 assignValues (TyLit (NumLit _) _ _) _ = BlockJSAST []
@@ -97,7 +98,7 @@ generateStmt (TyList (TyLit (SymLit "let") _ _:pattern:value:[]) _ _) = do
   value' <- generateExpr value
   case pattern of
     (TyLit (SymLit s) _ _) -> do
-      let assign = ExprStmtJSAST (AssignJSAST (IdentJSAST s) value')
+      let assign = ExprStmtJSAST (AssignJSAST (IdentJSAST (GUtil.toJSSafeSymbol s)) value')
       return (BlockJSAST [declare, assign])
     _ -> do
       i <- gensym
@@ -110,7 +111,7 @@ generateStmt (TyList (TyLit (SymLit "letrec") _ _:pattern:value:[]) _ _) = do
   value' <- generateExpr value
   case pattern of
     (TyLit (SymLit s) _ _) -> do
-      let assign = ExprStmtJSAST (AssignJSAST (IdentJSAST s) value')
+      let assign = ExprStmtJSAST (AssignJSAST (IdentJSAST (GUtil.toJSSafeSymbol s)) value')
       return (BlockJSAST [declare, assign])
     _ -> do
       i <- gensym
@@ -123,7 +124,7 @@ generateStmt (TyList (TyLit (SymLit "assume") _ _:_:[]) _ _) = do
 generateStmt x = ExprStmtJSAST <$> generateExpr x
 
 generateExpr :: TypedAST -> State [Int] JSAST
-generateExpr (TyLit (SymLit s) _ _) = return (IdentJSAST s)
+generateExpr (TyLit (SymLit s) _ _) = return (IdentJSAST (GUtil.toJSSafeSymbol s))
 generateExpr (TyLit (StrLit s) _ _) = return (StrLitJSAST s)
 generateExpr (TyLit (IntLit i) _ _) = return (NumLitJSAST (realToFrac i))
 generateExpr (TyLit (NumLit i) _ _) = return (NumLitJSAST i)

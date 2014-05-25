@@ -189,7 +189,7 @@ generateMatching (ListTy xs) jast = do
   let lastGet = ComputedMemberJSAST jast (NumLitJSAST (realToFrac (length xs - 1)))
   let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST jast "length") (NumLitJSAST (realToFrac (length xs)))) lastGet sliceCall
   let cond1 = generateMatching (last xs) lastCheck
-  BinaryJSAST "&&" (BinaryJSAST "===" (UnaryJSAST "typeof" jast) (StrLitJSAST "object")) (foldr (BinaryJSAST "&&") cond1 conds)
+  BinaryJSAST "&&" (BinaryJSAST "instanceof" jast (IdentJSAST "Array")) (foldr (BinaryJSAST "&&") cond1 conds)
 generateMatching (VarTy _) jast = jast
 generateMatching (RecTy _ ty) jast = generateMatching ty jast
 generateMatching (EitherTy xs) jast = do

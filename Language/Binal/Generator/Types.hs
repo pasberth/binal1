@@ -10,6 +10,7 @@ data JSAST
   | MemberJSAST JSAST String
   | ComputedMemberJSAST JSAST JSAST
   | ObjLitJSAST (HashMap.HashMap String JSAST)
+  | ArrLitJSAST [JSAST]
   | FuncLitJSAST [JSAST] JSAST
   | IdentJSAST String
   | StrLitJSAST String
@@ -31,6 +32,7 @@ flatJSAST' (AssignJSAST x y) = [AssignJSAST (flatJSAST x) (flatJSAST y)]
 flatJSAST' (MemberJSAST x y) = [MemberJSAST (flatJSAST x) y]
 flatJSAST' (ComputedMemberJSAST x y) = [ComputedMemberJSAST (flatJSAST x) (flatJSAST y)]
 flatJSAST' (ObjLitJSAST x) =  [ObjLitJSAST (HashMap.map flatJSAST x)]
+flatJSAST' (ArrLitJSAST x) =  [ArrLitJSAST (map flatJSAST x)]
 flatJSAST' (FuncLitJSAST x y) = [FuncLitJSAST (map flatJSAST x) (flatJSAST y)]
 flatJSAST' (IdentJSAST s) = [IdentJSAST s]
 flatJSAST' (StrLitJSAST s) = [StrLitJSAST s]
@@ -96,6 +98,12 @@ instance ToJSON JSAST where
                           Text.pack "value" .= v,
                           Text.pack "kind" .= "init"
             ]) (HashMap.toList xs)
+      ]
+  toJSON (ArrLitJSAST xs)
+    = object [
+        Text.pack "type" .= "ArrayExpression",
+        Text.pack "elements" .=
+          xs
       ]
   toJSON (FuncLitJSAST params body)
     = object [

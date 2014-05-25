@@ -145,7 +145,7 @@ generateExpr (TyList (f:args) _ _) = do
           let tmpThisAssign = ExprStmtJSAST (AssignJSAST tmpThis this)
           let tmpAssign = ExprStmtJSAST (AssignJSAST tmp (MemberJSAST tmpThis name))
           let normalCall = CallJSAST f' (initArgs' ++ [tmp])
-          let alternateCall = CallJSAST (MemberJSAST f' "apply") ([tmpThis] ++ [(CallJSAST (MemberJSAST (CallJSAST (IdentJSAST "Array") initArgs') "concat") [IdentJSAST "_tmp"])])
+          let alternateCall = CallJSAST (MemberJSAST f' "apply") ([tmpThis] ++ [(CallJSAST (MemberJSAST (ArrLitJSAST initArgs') "concat") [IdentJSAST "_tmp"])])
           let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (IdentJSAST "Array"))
           let call = callTest alternateCall normalCall
           StmtExprJSAST (BlockJSAST [tmpDeclare, tmpThisAssign, tmpAssign, ExprStmtJSAST call])
@@ -154,7 +154,7 @@ generateExpr (TyList (f:args) _ _) = do
           let tmpDeclare = DefVarsJSAST ["_tmp"]
           let tmpAssign = ExprStmtJSAST (AssignJSAST tmp lastArg')
           let normalCall = CallJSAST f' (initArgs' ++ [tmp])
-          let alternateCall = CallJSAST (MemberJSAST f' "apply") ([IdentJSAST "this"] ++ [(CallJSAST (MemberJSAST (CallJSAST (IdentJSAST "Array") initArgs') "concat") [IdentJSAST "_tmp"])])
+          let alternateCall = CallJSAST (MemberJSAST f' "apply") ([IdentJSAST "this"] ++ [(CallJSAST (MemberJSAST (ArrLitJSAST initArgs') "concat") [IdentJSAST "_tmp"])])
           let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (IdentJSAST "Array"))
           let call = callTest alternateCall normalCall
           StmtExprJSAST (BlockJSAST [tmpDeclare, tmpAssign, ExprStmtJSAST call])

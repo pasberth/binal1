@@ -145,8 +145,8 @@ generateExpr x@(TyList (TyLit (SymLit "let") _ _:_) _ _) = do
 generateExpr x@(TyList (TyLit (SymLit "letrec") _ _:_) _ _) = do
   StmtExprJSAST <$> generateStmt x
 generateExpr (TyList (TyLit (SymLit "object") _ _:xs) _ _) = do
-  let symbols = Maybe.catMaybes (map (\(x,i) -> if even i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))
-  let exprs = Maybe.catMaybes (map (\(x,i) -> if odd i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))
+  let symbols = Maybe.catMaybes (map (\(x,i) -> if even i then Just x else Nothing) (zip xs ([0..] :: [Int])))
+  let exprs = Maybe.catMaybes (map (\(x,i) -> if odd i then Just x else Nothing) (zip xs ([0..] :: [Int])))
   let propertyNames = Maybe.catMaybes (map (\x -> case x of
                                               TyLit (SymLit s) _ _ -> Just s
                                               _ -> Nothing) symbols)

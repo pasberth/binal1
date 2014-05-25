@@ -342,7 +342,7 @@ inferType' (List xs pos) = do
       let ty = ObjectTy [i] (HashMap.fromList (zip propertyNames tys))
       return
         (TyList
-          (TyLit (SymLit "object") SymTy pos1:typedExprs)
+          (TyLit (SymLit "object") SymTy pos1:concatMap (\(k1, (k,v)) -> [TyLit (SymLit k) SymTy (Util.whereIsAST k1),v]) (zip symbols (zip propertyNames typedExprs)))
           ty
           pos)
     Lit (SymLit ".") pos1 -> do

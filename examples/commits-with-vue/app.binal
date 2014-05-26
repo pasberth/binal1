@@ -1,0 +1,27 @@
+(assume JSON)
+(assume newVue)
+(assume newXMLHttpRequest)
+
+(newVue (object
+  el       "#demo"
+  data     (object branch "master")
+  created  (^ () (seq
+              (assume this)
+              ((. this $watch) "branch" (^ () ((. this fetchData))))))
+  filters  (object
+              truncate (^ v (seq
+                          (let newline ((. v indexOf) "\n"))
+                          (match newline
+                            (^ 0 v)
+                            (^ -1 v)
+                            (^ _ ((. v slice) 0 newline)))))
+              formatDate (^ (v _) v))
+  methods  (object
+              fetchData (^ () (seq
+                          (assume this)
+                          (let xhr (newXMLHttpRequest))
+                          (let self this)
+                          ((. xhr open) "GET" (str.add "https://api.github.com/repos/yyx990803/vue/commits?per_page=3&sha=" (. self branch)))
+                          (:= (. xhr onload) (^ ()
+                            (:= (. self commits) ((. JSON parse) (. xhr responseText)))))
+                          ((. xhr send)))))))

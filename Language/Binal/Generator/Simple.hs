@@ -12,6 +12,8 @@ import qualified Language.Binal.Util as Util
 import qualified Language.Binal.Generator.Util as GUtil
 
 humanReadable :: JSAST -> JSAST
+humanReadable (ExprStmtJSAST (SeqJSAST ys)) = BlockJSAST (map (humanReadable . ExprStmtJSAST) ys)
+humanReadable (ExprStmtJSAST (CondJSAST x y z)) = IfJSAST (humanReadable x) (humanReadable (ExprStmtJSAST y)) (humanReadable (ExprStmtJSAST z))
 humanReadable (RetJSAST (SeqJSAST xs)) = BlockJSAST ((map (humanReadable . ExprStmtJSAST) (init xs)) ++ [humanReadable (RetJSAST (last xs))])
 humanReadable (RetJSAST (CondJSAST x y z)) = IfJSAST (humanReadable x) (humanReadable (RetJSAST y)) (humanReadable (RetJSAST z))
 humanReadable (BlockJSAST xs) = BlockJSAST (map humanReadable xs)

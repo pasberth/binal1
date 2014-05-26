@@ -91,6 +91,10 @@ instance Show TyKind where
 data StyleError
   = UnexpectedEOFWhileReading
       Where
+  | ExtraCloseParenthesis
+      Where
+  | BadToken
+      Where
   | MismatchIndent
       Where
       Where

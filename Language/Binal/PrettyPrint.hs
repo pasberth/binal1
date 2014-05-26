@@ -60,6 +60,22 @@ prettyANSIStyleError (UnexpectedEOFWhileReading pos) = do
   System.IO.hPutStrLn System.IO.stderr msg
   ANSI.hSetSGR System.IO.stderr [ANSI.Reset]
   prettyANSIHintLine pos
+prettyANSIStyleError (ExtraCloseParenthesis pos) = do
+  let msg = "extra close parenthesis"
+  prettyANSIWhere pos
+  prettyANSIError
+  ANSI.hSetSGR System.IO.stderr [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  System.IO.hPutStrLn System.IO.stderr msg
+  ANSI.hSetSGR System.IO.stderr [ANSI.Reset]
+  prettyANSIHintLine pos
+prettyANSIStyleError (BadToken pos) = do
+  let msg = "bad token"
+  prettyANSIWhere pos
+  prettyANSIError
+  ANSI.hSetSGR System.IO.stderr [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  System.IO.hPutStrLn System.IO.stderr msg
+  ANSI.hSetSGR System.IO.stderr [ANSI.Reset]
+  prettyANSIHintLine pos
 prettyANSIStyleError (MismatchIndent before _) = do
   let msg = "matching `)' was not found within indented codes; maybe you forgot a `)'."
   prettyANSIWhere before

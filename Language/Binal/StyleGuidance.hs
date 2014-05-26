@@ -13,23 +13,43 @@ type StyleGuidance a = StateT [Where] T.Parser a
 
 isStyleError :: StyleError -> Bool
 isStyleError (UnexpectedEOFWhileReading _) = True
+isStyleError (ExtraCloseParenthesis _) = True
+isStyleError (BadToken _) = True
 isStyleError (MismatchIndent _ _) = False
 
 isStyleWarning :: StyleError -> Bool
 isStyleWarning (UnexpectedEOFWhileReading _) = False
+isStyleWarning (ExtraCloseParenthesis _) = False
+isStyleWarning (BadToken _) = False
 isStyleWarning (MismatchIndent _ _) = True
 
 styleErrors :: [StyleError] -> [StyleError]
 styleErrors = filter isStyleError
 
+examineStyleWithinProgram :: StyleGuidance [StyleError]
+examineStyleWithinProgram = do
+  errs1 <- examineStyle
+  errs2 <- concat <$> many (T.spaces *> examineExtraCloseParenthesis <* T.spaces)
+  return (errs1 ++ errs2)
+
 examineStyle :: StyleGuidance [StyleError]
 examineStyle = concat <$> many (T.spaces *> examineStyle1 <* T.spaces)
 
 examineStyle1 :: StyleGuidance [StyleError]
-examineStyle1 = examineStyleAtom <|> examineStyleList
+examineStyle1 = examineStyleAtom <|> examineStyleList <|> examineBadToken
 
 examineStyleAtom :: StyleGuidance [StyleError]
 examineStyleAtom = lift P.atom >> return []
+
+examineExtraCloseParenthesis :: StyleGuidance [StyleError]
+examineExtraCloseParenthesis = do
+  (pos, _) <- lift (P.withPosition (T.char ')'))
+  return [ExtraCloseParenthesis pos]
+
+examineBadToken :: StyleGuidance [StyleError]
+examineBadToken = do
+  (pos, _) <- lift (P.withPosition (some (T.noneOf " \n()")))
+  return [BadToken pos]
 
 examineStyleList :: StyleGuidance [StyleError]
 examineStyleList = do
@@ -77,11 +97,11 @@ examineStyleList = do
   return (mismatches1 ++ mismatches2 ++ mismatches3)
 
 examineStyleFromFile :: FilePath -> IO (Maybe [StyleError])
-examineStyleFromFile path = T.parseFromFile (evalStateT (examineStyle <* T.eof) []) path
+examineStyleFromFile path = T.parseFromFile (evalStateT (examineStyleWithinProgram <* T.eof) []) path
 
 examineStyleString :: String -> IO (Maybe [StyleError])
 examineStyleString str = do
-  case T.parseString (evalStateT (examineStyle <* T.eof) []) (D.Columns 0 0) str of
+  case T.parseString (evalStateT (examineStyleWithinProgram <* T.eof) []) (D.Columns 0 0) str of
     T.Success x -> return (Just x)
     T.Failure doc -> do
       putStrLn (show doc)

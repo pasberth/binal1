@@ -38,10 +38,10 @@ letter :: T.Parser Char
 letter = T.oneOf "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 specialInitial :: T.Parser Char
-specialInitial = T.oneOf "!$%&*/:<=>?^_~"
+specialInitial = T.oneOf "!$%&*/:<=>?^_~.@"
 
 specialSubsequent :: T.Parser Char
-specialSubsequent = T.oneOf "+-.@"
+specialSubsequent = T.oneOf "+-"
 
 digit :: T.Parser Char
 digit = T.oneOf "0123456789"

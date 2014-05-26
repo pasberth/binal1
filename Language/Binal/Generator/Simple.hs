@@ -125,6 +125,34 @@ generateStmt x = ExprStmtJSAST <$> generateExpr x
 
 generateExpr :: TypedAST -> State [Int] JSAST
 generateExpr (TyLit (SymLit s) _ _) = case s of
+    "num.add" ->
+      generateExpr
+        (TyList
+          [ TyLit (SymLit "^") undefined undefined,
+            TyList
+              [ TyLit (SymLit "x") undefined undefined,
+                TyLit (SymLit "y") undefined undefined ]
+              undefined undefined,
+            TyList
+              [ TyLit (SymLit "num.add") undefined undefined,
+                TyLit (SymLit "x") undefined undefined,
+                TyLit (SymLit "y") undefined undefined ]
+              undefined undefined
+          ] undefined undefined)
+    "str.add" ->
+      generateExpr
+        (TyList
+          [ TyLit (SymLit "^") undefined undefined,
+            TyList
+              [ TyLit (SymLit "x") undefined undefined,
+              TyLit (SymLit "y") undefined undefined ]
+              undefined undefined,
+            TyList
+              [ TyLit (SymLit "str.add") undefined undefined,
+                TyLit (SymLit "x") undefined undefined,
+                TyLit (SymLit "y") undefined undefined ]
+              undefined undefined
+          ] undefined undefined)
     _ -> return (IdentJSAST (GUtil.toJSSafeSymbol s))
 generateExpr (TyLit (StrLit s) _ _) = return (StrLitJSAST s)
 generateExpr (TyLit (NumLit i) _ _) = return (NumLitJSAST i)
@@ -193,6 +221,10 @@ generateExpr (TyList (TyLit (SymLit "num.add") _ _:x:y:[]) _ _) = do
   BinaryJSAST "+" <$> generateExpr x <*> generateExpr y
 generateExpr (TyList (TyLit (SymLit "str.add") _ _:x:y:[]) _ _) = do
   BinaryJSAST "+" <$> generateExpr x <*> generateExpr y
+generateExpr (TyList (TyLit (SymLit "mutable") _ _:x:[]) _ _) = do
+  generateExpr x
+generateExpr (TyList (TyLit (SymLit "unmutable") _ _:x:[]) _ _) = do
+  generateExpr x
 generateExpr (TyList (f:args) _ _) = do
   f' <- generateExpr f
   case args of

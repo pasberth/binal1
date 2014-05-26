@@ -13,6 +13,10 @@ keywords = HashSet.fromList
             , "match"
             , "object"
             , "."
+            , ":="
+            , "object"
+            , "assume"
+            , "cond"
             ]
 
 primitives :: HashSet.HashSet String

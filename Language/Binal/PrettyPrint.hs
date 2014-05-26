@@ -11,6 +11,12 @@ prettyANSIError = do
   System.IO.hPutStr System.IO.stderr "error: "
   ANSI.hSetSGR System.IO.stderr [ANSI.Reset]
 
+prettyANSIWarning :: IO ()
+prettyANSIWarning = do
+  ANSI.hSetSGR System.IO.stderr [ANSI.SetColor ANSI.Foreground ANSI.Dull ANSI.Magenta, ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  System.IO.hPutStr System.IO.stderr "warning: "
+  ANSI.hSetSGR System.IO.stderr [ANSI.Reset]
+
 prettyANSIWhere :: Where -> IO ()
 prettyANSIWhere pos = do
   ANSI.hSetSGR System.IO.stderr [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
@@ -44,6 +50,24 @@ prettyANSIHintLine pos = do
   ANSI.hSetSGR System.IO.stderr [ANSI.Reset]
   System.IO.hPutStr System.IO.stderr suffix
   ANSI.hSetSGR System.IO.stderr [ANSI.Reset]
+
+prettyANSIStyleError :: StyleError -> IO ()
+prettyANSIStyleError (UnexpectedEOFWhileReading pos) = do
+  let msg = "unexpected end of file; maybe you forgot a `)'."
+  prettyANSIWhere pos
+  prettyANSIError
+  ANSI.hSetSGR System.IO.stderr [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  System.IO.hPutStrLn System.IO.stderr msg
+  ANSI.hSetSGR System.IO.stderr [ANSI.Reset]
+  prettyANSIHintLine pos
+prettyANSIStyleError (MismatchIndent before _) = do
+  let msg = "matching `)' was not found within indented codes; maybe you forgot a `)'."
+  prettyANSIWhere before
+  prettyANSIWarning
+  ANSI.hSetSGR System.IO.stderr [ANSI.SetConsoleIntensity ANSI.BoldIntensity]
+  System.IO.hPutStrLn System.IO.stderr msg
+  ANSI.hSetSGR System.IO.stderr [ANSI.Reset]
+  prettyANSIHintLine before
 
 prettyANSISyntaxError :: SyntaxError -> IO ()
 prettyANSISyntaxError (KeywordUsedAsVariable kwd pos) = do

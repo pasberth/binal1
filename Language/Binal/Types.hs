@@ -88,6 +88,13 @@ instance Show TyKind where
     showm = unwords (concatMap (\(key, value) -> [key, show value]) (HashMap.toList m))
   show (MutableTy ty) = "(mutable " ++ show ty ++ ")"
 
+data StyleError
+  = UnexpectedEOFWhileReading
+      Where
+  | MismatchIndent
+      Where
+      Where
+
 data SyntaxError
   = KeywordUsedAsVariable
       String -- ^ keyword

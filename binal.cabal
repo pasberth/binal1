@@ -40,6 +40,7 @@ library
     , Language.Binal.Util.TyKind
     , Language.Binal.Util.AST
     , Language.Binal.Util.TypedAST
+    , Language.Binal.StyleGuidance
     , Language.Binal.Parser
     , Language.Binal.Verifier
     , Language.Binal.Generator

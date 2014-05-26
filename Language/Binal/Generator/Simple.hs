@@ -13,6 +13,8 @@ import qualified Language.Binal.Generator.Util as GUtil
 
 humanReadable :: JSAST -> JSAST
 humanReadable (ExprStmtJSAST (AssignJSAST name (CondJSAST x y z))) = humanReadable (IfJSAST (humanReadable x) (humanReadable (ExprStmtJSAST (AssignJSAST name y))) (humanReadable (ExprStmtJSAST (AssignJSAST name z))))
+humanReadable x@(ExprStmtJSAST (AssignJSAST _ (SeqJSAST []))) = x
+humanReadable (ExprStmtJSAST (AssignJSAST x (SeqJSAST xs))) = humanReadable (BlockJSAST (map ExprStmtJSAST (init xs) ++ [ExprStmtJSAST (AssignJSAST x (last xs))]))
 humanReadable (ExprStmtJSAST (AssignJSAST x y))
   | x == y = BlockJSAST []
   | otherwise = ExprStmtJSAST (AssignJSAST (humanReadable x) (humanReadable y))

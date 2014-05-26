@@ -23,14 +23,16 @@ primitives :: HashSet.HashSet String
 primitives = HashSet.fromList ("true":"false":HashMap.keys initialTypeEnv)
 
 initialVarList :: [Variable]
-initialVarList = [1..]
+initialVarList = [3..]
 
 initialTypeEnv :: TypeEnv
 initialTypeEnv = HashMap.fromList
                   [ ("str.add", ArrTy (ListTy [StrTy, StrTy]) StrTy)
                   , ("num.add", ArrTy (ListTy [NumTy, NumTy]) NumTy)
                   , ("require", ArrTy StrTy (VarTy 0))
+                  , ("mutable", ArrTy (VarTy 1) (MutableTy (VarTy 1)))
+                  , ("unmutable", ArrTy (MutableTy (VarTy 2)) (VarTy 2))
                   ]
 
 initialPolyEnv :: PolyEnv
-initialPolyEnv = HashSet.fromList [0]
+initialPolyEnv = HashSet.fromList [0..2]

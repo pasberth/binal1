@@ -126,7 +126,18 @@ instance ToJSON JSAST where
         Text.pack "value" .= s
         ]
   toJSON (NumLitJSAST n)
-    = object [
+    | n < 0
+      = object [
+        Text.pack "type" .= "UnaryExpression",
+        Text.pack "operator" .= "-",
+        Text.pack "argument" .= object [
+            Text.pack "type" .= "Literal",
+            Text.pack "value" .= (negate n)
+          ],
+        Text.pack "prefix" .= True
+        ]
+    | otherwise
+      = object [
         Text.pack "type" .= "Literal",
         Text.pack "value" .= n
       ]

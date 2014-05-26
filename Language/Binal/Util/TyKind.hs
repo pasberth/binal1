@@ -4,6 +4,7 @@ import           Control.Monad.State
 import qualified Data.List as List
 import qualified Data.HashMap.Strict as HashMap
 import           Language.Binal.Types
+import qualified Language.Binal.Util.Gen as Gen
 
 freeVariables :: TyKind -> [Variable]
 freeVariables (VarTy i) = [i]
@@ -90,19 +91,38 @@ showTy' BoolTy = return "bool"
 showTy' (ArrTy ty1 ty2) = do
   ty1S <- showTy' ty1
   ty2S <- showTy' ty2
-  return ("(-> " ++ ty1S ++ " " ++ ty2S ++ ")")
+  case (length (lines ty1S), length (lines ty2S)) of
+    (1, 1) -> return ("(-> " ++ ty1S ++ " " ++ ty2S ++ ")")
+    _ -> return ("(-> " ++ drop 4 (Gen.indent 4 ty1S) ++ "\n" ++ Gen.indent 4 ty2S ++ ")")
 showTy' (ListTy xs) = do
   ss <- mapM showTy' xs
-  return ("(" ++ unwords ss ++ ")")
+  if all (\x -> 1 == length (lines x)) ss
+    then
+      return ("(" ++ unwords ss ++ ")")
+    else
+      return ("(" ++ drop 1 (Gen.indent 1 (unlines ss)) ++ ")")
 showTy' (EitherTy xs) = do
   ss <- mapM showTy' xs
-  return ("(| " ++ unwords ss ++ ")")
-showTy' (ObjectTy _ m) = do
-  ss <- mapM (\(key, val) -> do { x <- showTy' val; return [key, x]}) (HashMap.toList m)
-  return ("(obj " ++ unwords (concat ss) ++ ")")
+  if all (\x -> 1 == length (lines x)) ss
+    then
+      return ("(| " ++ unwords ss ++ ")")
+    else
+      return ("(| " ++ drop 3 (Gen.indent 3 (unlines ss)) ++ ")")
+showTy' (ObjectTy _ m)
+  | HashMap.null m = return "(obj)"
+  | otherwise = do
+    let maxLen = foldr1 max (map length (HashMap.keys m))
+    ss <- mapM (\(key, val) -> do
+                  x <- showTy' val
+                  return ["\n", key, drop (length key) (Gen.indent (maxLen + 1) x)]) (HashMap.toList m)
+    return ("(obj " ++ drop 5 (Gen.indent 5 (tail (concat (concat ss)))) ++ ")")
 showTy' (MutableTy ty) = do
   s <- showTy' ty
-  return ("(mutable " ++ s ++ ")")
+  case length (lines s) of
+    1 -> do
+      return ("(mutable " ++ s ++ ")")
+    _ -> do
+      return ("(mutable" ++ drop 8 (Gen.indent 9 s) ++ ")")
 
 showTy :: TyKind -> String
 showTy ty = evalState (showTy' ty) (HashMap.empty, map (\ch -> [ch]) ['a'..'z'])

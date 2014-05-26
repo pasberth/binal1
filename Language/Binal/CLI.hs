@@ -29,11 +29,20 @@ generateInterface :: TypedAST -> String
 generateInterface (TyList (TyLit (SymLit "seq") _ _:xs) _ _)
   = unlines (filter (not . null) (map generateInterface xs))
 generateInterface (TyList (TyLit (SymLit "let") _ _:param:_:[]) _ _)
-  = "(val " ++ generateIdent param ++ " " ++ generateType (Util.typeof param) ++ ")"
+  = do
+    let prefix = "(val " ++ generateIdent param
+    let len = length prefix
+    prefix ++ drop len (Util.indent (len + 1) (generateType (Util.typeof param))) ++ ")"
 generateInterface (TyList (TyLit (SymLit "letrec") _ _:param:_:[]) _ _)
-  = "(val " ++ generateIdent param ++ " " ++ generateType (Util.typeof param) ++ ")"
+  = do
+    let prefix = "(val " ++ generateIdent param
+    let len = length prefix
+    prefix ++ drop len (Util.indent (len + 1) (generateType (Util.typeof param))) ++ ")"
 generateInterface (TyList (TyLit (SymLit "assume") _ _:param:[]) _ _)
-  = "(val " ++ generateIdent param ++ " " ++ generateType (Util.typeof param) ++ ")"
+  = do
+    let prefix = "(val " ++ generateIdent param
+    let len = length prefix
+    prefix ++ drop len (Util.indent (len + 1) (generateType (Util.typeof param))) ++ ")"
 generateInterface _ = ""
 
 generateIdent :: TypedAST -> String

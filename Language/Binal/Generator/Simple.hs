@@ -192,22 +192,39 @@ generateExpr (TyList (f:args) _ _) = do
       let lastArg = last args
       initArgs' <- mapM generateExpr (init args)
       lastArg' <- generateExpr lastArg
-      case lastArg' of
+      case f' of
         MemberJSAST this name -> do
-          i <- gensym
-          j <- gensym
-          let tmpThis = IdentJSAST ("_tmp" ++ show j)
-          let tmp = IdentJSAST ("_tmp" ++ show i)
-          let tmpThisAssign = AssignJSAST tmpThis this
-          let tmpAssign = AssignJSAST tmp (MemberJSAST tmpThis name)
-          let normalCall = CallJSAST f' (initArgs' ++ [tmp])
+          (isTmpAssignThis, tmpThis) <-
+            case this of
+              IdentJSAST _ -> return (False, this)
+              _ -> do
+                i <- gensym
+                return (True, IdentJSAST ("_tmp" ++ show i))
+          (isTmpAssign, tmp) <-
+            case lastArg' of
+              IdentJSAST _ -> return (False ,lastArg')
+              _ -> do
+                i <- gensym
+                return (True, IdentJSAST ("_tmp" ++ show i))
+          let tmpF = MemberJSAST tmpThis name
+          let tmpAssignThis = AssignJSAST tmpThis this
+          let tmpAssign = AssignJSAST tmp lastArg'
+          let normalCall = CallJSAST tmpF (initArgs' ++ [tmp])
           let noName = case initArgs' of
-                        [] -> tmp
-                        _ -> CallJSAST (MemberJSAST (ArrLitJSAST initArgs') "concat") [tmp]
-          let alternateCall = CallJSAST (MemberJSAST f' "apply") ([tmpThis] ++ [noName])
+                          [] -> tmp
+                          _ -> CallJSAST (MemberJSAST (ArrLitJSAST initArgs') "concat") [tmp]
+          let alternateCall = CallJSAST (MemberJSAST tmpF "apply") ([tmpThis] ++ [noName])
           let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (IdentJSAST "Array"))
           let call = callTest alternateCall normalCall
-          return (SeqJSAST [tmpThisAssign, tmpAssign, call])
+          if isTmpAssignThis
+            then
+              if isTmpAssign
+                then return (SeqJSAST [tmpAssignThis, tmpAssign, call])
+                else return (SeqJSAST [tmpAssignThis, call])
+            else
+              if isTmpAssign
+                then return (SeqJSAST [tmpAssign, call])
+                else return call
         _ -> do
           (isTmpAssignF, tmpF) <-
             case f' of

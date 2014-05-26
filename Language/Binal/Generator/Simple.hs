@@ -127,7 +127,7 @@ generateExpr (TyLit (SymLit s) _ _) = case s of
     _ -> return (IdentJSAST (GUtil.toJSSafeSymbol s))
 generateExpr (TyLit (StrLit s) _ _) = return (StrLitJSAST s)
 generateExpr (TyLit (NumLit i) _ _) = return (NumLitJSAST i)
-generateExpr (TyList (TyLit (SymLit "lambda") _ _:params:body:[]) _ _) = do
+generateExpr (TyList (TyLit (SymLit "^") _ _:params:body:[]) _ _) = do
   let params' = generateParams params
   let body' = generateFuncBody body
   case params' of

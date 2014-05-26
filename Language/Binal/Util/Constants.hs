@@ -6,7 +6,7 @@ import           Language.Binal.Types
 
 keywords :: HashSet.HashSet String
 keywords = HashSet.fromList
-            [ "lambda"
+            [ "^"
             , "seq"
             , "let"
             , "letrec"

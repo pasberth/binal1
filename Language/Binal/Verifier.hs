@@ -30,7 +30,7 @@ examineForms (List [] pos) = [UnexpectedArity 1 0 pos]
 examineForms (List xs pos) = do
   let instr = xs !! 0
   case instr of
-    Lit (SymLit "lambda") _ -> do
+    Lit (SymLit "^") _ -> do
       if length xs /= 3
         then [UnexpectedArity 3 (length xs) pos]
         else do
@@ -118,7 +118,7 @@ examineNames' (List xs _) = do
   env <- get
   let instr = xs !! 0
   case instr of
-    Lit (SymLit "lambda") _ -> do
+    Lit (SymLit "^") _ -> do
       let params = xs !! 1
       let body = xs !! 2
       let env' = foldr HashSet.insert env (Util.flatSymbols params)
@@ -179,7 +179,7 @@ makePoly (TyLit _ ty1 _)
         VarTy i -> _4 %= HashSet.insert i
         _ -> return ())
       ty1
-makePoly (TyList (TyLit (SymLit "lambda") _ _:_) ty1 _)
+makePoly (TyList (TyLit (SymLit "^") _ _:_) ty1 _)
   = Util.traverseVarTyM
       (\ty -> case ty of
         VarTy i -> _4 %= HashSet.insert i
@@ -241,7 +241,7 @@ inferType' (Lit lit@(NumLit _) pos) = return (TyLit lit NumTy pos)
 inferType' (List xs pos) = do
   let instr = xs !! 0
   case instr of
-    Lit (SymLit "lambda") pos1 -> do
+    Lit (SymLit "^") pos1 -> do
       let params = xs !! 1
       let body = xs !! 2
       let syms = Util.flatSymbols params
@@ -257,7 +257,7 @@ inferType' (List xs pos) = do
       let unifiedBody = Util.mapTyKind (unify constraints) typedBody
       let unifiedParams = Util.mapTyKind (unify constraints) typedParams
       return (TyList
-                [TyLit (SymLit "lambda") SymTy pos1, unifiedParams, unifiedBody]
+                [TyLit (SymLit "^") SymTy pos1, unifiedParams, unifiedBody]
                 (ArrTy (Util.typeof unifiedParams) (Util.typeof unifiedBody))
                 pos)
     Lit (SymLit "seq") pos1 -> do

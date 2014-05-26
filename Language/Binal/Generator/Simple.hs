@@ -12,11 +12,17 @@ import qualified Language.Binal.Util as Util
 import qualified Language.Binal.Generator.Util as GUtil
 
 humanReadable :: JSAST -> JSAST
+humanReadable (ExprStmtJSAST (AssignJSAST name (CondJSAST x y z))) = humanReadable (IfJSAST (humanReadable x) (humanReadable (ExprStmtJSAST (AssignJSAST name y))) (humanReadable (ExprStmtJSAST (AssignJSAST name z))))
+humanReadable (ExprStmtJSAST (AssignJSAST x y))
+  | x == y = BlockJSAST []
+  | otherwise = ExprStmtJSAST (AssignJSAST (humanReadable x) (humanReadable y))
 humanReadable (ExprStmtJSAST (SeqJSAST ys)) = BlockJSAST (map (humanReadable . ExprStmtJSAST) ys)
 humanReadable (ExprStmtJSAST (CondJSAST x y z)) = IfJSAST (humanReadable x) (humanReadable (ExprStmtJSAST y)) (humanReadable (ExprStmtJSAST z))
 humanReadable (RetJSAST (SeqJSAST xs)) = BlockJSAST ((map (humanReadable . ExprStmtJSAST) (init xs)) ++ [humanReadable (RetJSAST (last xs))])
 humanReadable (RetJSAST (CondJSAST x y z)) = IfJSAST (humanReadable x) (humanReadable (RetJSAST y)) (humanReadable (RetJSAST z))
 humanReadable (BlockJSAST xs) = BlockJSAST (map humanReadable xs)
+humanReadable (IfJSAST x (BlockJSAST []) (BlockJSAST [])) = humanReadable (ExprStmtJSAST x)
+humanReadable (IfJSAST x (BlockJSAST []) z) = humanReadable (IfJSAST (UnaryJSAST "!" x) z (BlockJSAST []))
 humanReadable x@(DefVarsJSAST _) = x
 humanReadable (AssignJSAST x y) = AssignJSAST (humanReadable x) (humanReadable y)
 humanReadable (MemberJSAST x y) = MemberJSAST (humanReadable x) y

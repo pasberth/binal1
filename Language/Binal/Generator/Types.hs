@@ -26,6 +26,7 @@ data JSAST
   | UnaryJSAST String JSAST
   | BinaryJSAST String JSAST JSAST
   | SeqJSAST [JSAST]
+  deriving (Eq)
 
 flatJSAST' :: JSAST -> [JSAST]
 flatJSAST' (BlockJSAST xs) = concatMap flatJSAST' xs
@@ -183,6 +184,12 @@ instance ToJSON JSAST where
         Text.pack "test" .= x,
         Text.pack "consequent" .= y,
         Text.pack "alternate" .= z
+      ]
+  toJSON (IfJSAST x y (BlockJSAST []))
+    = object [
+        Text.pack "type" .= "IfStatement",
+        Text.pack "test" .= x,
+        Text.pack "consequent" .= y
       ]
   toJSON (IfJSAST x y z)
     = object [

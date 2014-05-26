@@ -2,7 +2,6 @@ module Language.Binal.REPL where
 
 import           Control.Monad.State
 import qualified Data.List                 as List
-import qualified Data.HashSet              as HashSet
 import qualified Data.IORef                as IORef
 import qualified System.Console.Haskeline  as Haskeline
 import qualified Language.Binal.Util       as Util
@@ -13,7 +12,7 @@ import qualified Language.Binal.Verifier as V
 repl :: IO ()
 repl = Haskeline.runInputT Haskeline.defaultSettings start where
   start = do
-    ref1 <- liftIO (IORef.newIORef HashSet.empty)
+    ref1 <- liftIO (IORef.newIORef Util.primitives)
     ref2 <- liftIO (IORef.newIORef (Util.initialTypeEnv, Util.initialVarList, [], Util.initialPolyEnv))
     loop ref1 ref2
   loop ref1 ref2 = do

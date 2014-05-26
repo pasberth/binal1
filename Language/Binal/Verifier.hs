@@ -225,7 +225,7 @@ unifyEnv :: TypeInferer ()
 unifyEnv = do
   env <- use _1
   constraints <- use _3
-  _1 .= HashMap.map (unify constraints) env
+  _1 .= HashMap.map (unify (reverse constraints)) env
 
 inferTypeOfParams :: AST -> TypeInferer TypedAST
 inferTypeOfParams x@(Lit _ _) = inferType' x
@@ -258,8 +258,8 @@ inferType' (List xs pos) = do
       _1 .= env
       unifyEnv
       constraints <- use _3
-      let unifiedBody = Util.mapTyKind (unify constraints) typedBody
-      let unifiedParams = Util.mapTyKind (unify constraints) typedParams
+      let unifiedBody = Util.mapTyKind (unify (reverse constraints)) typedBody
+      let unifiedParams = Util.mapTyKind (unify (reverse constraints)) typedParams
       return (TyList
                 [TyLit (SymLit "^") SymTy pos1, unifiedParams, unifiedBody]
                 (ArrTy (Util.typeof unifiedParams) (Util.typeof unifiedBody))
@@ -286,7 +286,7 @@ inferType' (List xs pos) = do
       _3 %= (Equal bodyTy patTy absurd :)
       unifyEnv
       constraints <- use _3
-      let unifiedPattern = Util.mapTyKind (unify constraints) typedPattern
+      let unifiedPattern = Util.mapTyKind (unify (reverse constraints)) typedPattern
       return (TyList
                 [TyLit (SymLit "let") SymTy pos1, unifiedPattern, typedBody]
                 (ListTy [])
@@ -306,8 +306,8 @@ inferType' (List xs pos) = do
       _3 %= (Equal bodyTy patTy absurd :)
       unifyEnv
       constraints <- use _3
-      let unifiedBody = Util.mapTyKind (unify constraints) typedBody
-      let unifiedPattern = Util.mapTyKind (unify constraints) typedPattern
+      let unifiedBody = Util.mapTyKind (unify (reverse constraints)) typedBody
+      let unifiedPattern = Util.mapTyKind (unify (reverse constraints)) typedPattern
       makePoly unifiedBody
       return (TyList
                 [TyLit (SymLit "letrec") SymTy pos1, unifiedPattern, unifiedBody]
@@ -328,11 +328,11 @@ inferType' (List xs pos) = do
       _3 %= (Equal expected exprTy (UnexpectedType expected exprTy (Util.whereIs expr)) :)
       unifyEnv
       constraints <- use _3
-      let unifiedExpr = Util.mapTyKind (unify constraints) expr
-      let unifiedPatterns = map (Util.mapTyKind (unify constraints)) patterns
+      let unifiedExpr = Util.mapTyKind (unify (reverse constraints)) expr
+      let unifiedPatterns = map (Util.mapTyKind (unify (reverse constraints))) patterns
       return (TyList
               (TyLit (SymLit "match") SymTy pos1:unifiedExpr:unifiedPatterns)
-              (unify constraints retTy)
+              (unify (reverse constraints) retTy)
               pos)
     Lit (SymLit "object") pos1 -> do
       let symbols = Maybe.catMaybes (map (\(x,i) -> if even i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))
@@ -362,11 +362,11 @@ inferType' (List xs pos) = do
       _3 %= (Equal expected exprTy (UnexpectedType expected exprTy (Util.whereIs typedExpr)) :)
       unifyEnv
       constraints <- use _3
-      let unifiedExpr = Util.mapTyKind (unify constraints) typedExpr
-      let unifiedProp = Util.mapTyKind (unify constraints) typedProp
+      let unifiedExpr = Util.mapTyKind (unify (reverse constraints)) typedExpr
+      let unifiedProp = Util.mapTyKind (unify (reverse constraints)) typedProp
       return
         (Util.mapTyKind
-          (unify constraints)
+          (unify (reverse constraints))
           (TyList
             [TyLit (SymLit ".") SymTy pos1, unifiedExpr, unifiedProp]
             (VarTy x)
@@ -381,7 +381,7 @@ inferType' (List xs pos) = do
       constraints <- use _3
       return
         (Util.mapTyKind
-          (unify constraints)
+          (unify (reverse constraints))
           (TyList
                 [TyLit (SymLit ":=") SymTy pos1, left, right]
                 (ListTy [])
@@ -406,9 +406,9 @@ inferType' (List xs pos) = do
       _3 %= (Subtype funcTy expected (UnexpectedType expected funcTy (Util.whereIs typedFunc)) :)
       unifyEnv
       constraints <- use _3
-      let unifiedFunc = Util.mapTyKind (unify constraints) typedFunc
-      let unifiedArgs = map (Util.mapTyKind (unify constraints)) typedArgs
-      return (Util.mapTyKind (unify constraints) (TyList (unifiedFunc:unifiedArgs) (VarTy x) pos))
+      let unifiedFunc = Util.mapTyKind (unify (reverse constraints)) typedFunc
+      let unifiedArgs = map (Util.mapTyKind (unify (reverse constraints))) typedArgs
+      return (Util.mapTyKind (unify (reverse constraints)) (TyList (unifiedFunc:unifiedArgs) (VarTy x) pos))
 
 inferType :: AST -> ([Absurd], TypedAST)
 inferType ast = do

@@ -20,6 +20,7 @@ humanReadable (ExprStmtJSAST (SeqJSAST ys)) = BlockJSAST (map (humanReadable . E
 humanReadable (ExprStmtJSAST (CondJSAST x y z)) = IfJSAST (humanReadable x) (humanReadable (ExprStmtJSAST y)) (humanReadable (ExprStmtJSAST z))
 humanReadable (RetJSAST (SeqJSAST xs)) = BlockJSAST ((map (humanReadable . ExprStmtJSAST) (init xs)) ++ [humanReadable (RetJSAST (last xs))])
 humanReadable (RetJSAST (CondJSAST x y z)) = IfJSAST (humanReadable x) (humanReadable (RetJSAST y)) (humanReadable (RetJSAST z))
+humanReadable (RetJSAST (AssignJSAST name x)) = humanReadable (BlockJSAST [ExprStmtJSAST (AssignJSAST name x), RetJSAST name])
 humanReadable (BlockJSAST xs) = BlockJSAST (map humanReadable xs)
 humanReadable (IfJSAST x (BlockJSAST []) (BlockJSAST [])) = humanReadable (ExprStmtJSAST x)
 humanReadable (IfJSAST x (BlockJSAST []) z) = humanReadable (IfJSAST (UnaryJSAST "!" x) z (BlockJSAST []))

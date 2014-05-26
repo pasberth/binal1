@@ -338,4 +338,9 @@ generateMatching (EitherTy xs) jast = do
     else do
       let conds = map (\x -> generateMatching x jast) xs
       foldr1 (BinaryJSAST "||") conds
+generateMatching (ObjectTy _ m) jast
+  | HashMap.null m = jast
+  | otherwise = do
+    let matchers = map (\(key,val) -> (generateMatching val (MemberJSAST jast key))) (HashMap.toList m)
+    foldr1 (BinaryJSAST "&&") matchers
 generateMatching ty _ = UnaryJSAST "void" (StrLitJSAST (show ty))

@@ -204,6 +204,7 @@ freshPoly' (RecTy i ty) = do
   VarTy i' <- freshPoly' (VarTy i)
   ty' <- freshPoly' ty
   return (RecTy i' ty')
+freshPoly' (LitTy lit) = return (LitTy lit)
 freshPoly' SymTy = return SymTy
 freshPoly' StrTy = return StrTy
 freshPoly' NumTy = return NumTy
@@ -236,8 +237,7 @@ inferType' (Lit lit@(SymLit s) pos) = do
   env <- use _1
   ty <- freshPoly (Maybe.fromJust (HashMap.lookup s env))
   return (TyLit lit ty pos)
-inferType' (Lit lit@(StrLit _) pos) = return (TyLit lit StrTy pos)
-inferType' (Lit lit@(NumLit _) pos) = return (TyLit lit NumTy pos)
+inferType' (Lit lit pos) = return (TyLit lit (LitTy lit) pos)
 inferType' (List xs pos) = do
   let instr = xs !! 0
   case instr of
@@ -419,6 +419,7 @@ subst i x y@(VarTy j)
 subst i x (RecTy j ty)
   | i == j = RecTy j ty
   | otherwise = RecTy j (subst i x ty)
+subst _ _ (LitTy lit) = LitTy lit
 subst _ _ SymTy = SymTy
 subst _ _ StrTy = StrTy
 subst _ _ NumTy = NumTy
@@ -480,6 +481,10 @@ unify' (Subtype s t absurd:c)
                 unify' (Subtype t1 s1 absurd:Subtype s2 t2 absurd:c)
               (RecTy _ s1, RecTy _ t1) -> do
                 unify' (Subtype s1 t1 absurd:c)
+              (LitTy (StrLit _), StrTy) -> do
+                unify' c
+              (LitTy (NumLit _), NumTy) -> do
+                unify' c
               (MutableTy s1, MutableTy t1) ->
                 unify' (Subtype s1 t1 absurd:c)
               (_, EitherTy ts) -> do

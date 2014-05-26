@@ -12,6 +12,7 @@ freeVariables (LitTy _) = []
 freeVariables SymTy = []
 freeVariables StrTy = []
 freeVariables NumTy = []
+freeVariables BoolTy = []
 freeVariables (ArrTy x y) = freeVariables x ++ freeVariables y
 freeVariables (ListTy xs) = concatMap freeVariables xs
 freeVariables (EitherTy xs) = concatMap freeVariables xs
@@ -41,6 +42,7 @@ flatListTy (LitTy lit) = LitTy lit
 flatListTy SymTy = SymTy
 flatListTy StrTy = StrTy
 flatListTy NumTy = NumTy
+flatListTy BoolTy = BoolTy
 flatListTy (ArrTy ty1 ty2) = ArrTy (flatListTy ty1) (flatListTy ty2)
 flatListTy (ListTy tys) = case flatListTy' tys of
   [ty] -> ty
@@ -84,6 +86,7 @@ showTy' (LitTy lit) = return (show lit)
 showTy' SymTy = return "symbol"
 showTy' StrTy = return "string"
 showTy' NumTy = return "number"
+showTy' BoolTy = return "bool"
 showTy' (ArrTy ty1 ty2) = do
   ty1S <- showTy' ty1
   ty2S <- showTy' ty2
@@ -113,6 +116,7 @@ traverseVarTyM _ (LitTy _) = return ()
 traverseVarTyM _ SymTy = return ()
 traverseVarTyM _ StrTy = return ()
 traverseVarTyM _ NumTy = return ()
+traverseVarTyM _ BoolTy = return ()
 traverseVarTyM f (ArrTy ty1 ty2) = traverseVarTyM f ty1 >> traverseVarTyM f ty2
 traverseVarTyM f (ListTy tys) = mapM_ (traverseVarTyM f) tys
 traverseVarTyM f (EitherTy tys) = mapM_ (traverseVarTyM f) tys

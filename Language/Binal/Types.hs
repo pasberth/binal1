@@ -25,12 +25,15 @@ data LitKind
   = SymLit String
   | StrLit String
   | NumLit Double
+  | BoolLit Bool
   deriving (Eq)
 
 instance Show LitKind where
   show (SymLit s) = s
   show (StrLit s) = show s
   show (NumLit i) = show i
+  show (BoolLit True) = "true"
+  show (BoolLit False) = "false"
 
 data AST
   = Lit LitKind Where
@@ -62,6 +65,7 @@ data TyKind
   | SymTy
   | StrTy
   | NumTy
+  | BoolTy
   | ArrTy TyKind TyKind
   | ListTy [TyKind]
   | EitherTy [TyKind]
@@ -76,6 +80,7 @@ instance Show TyKind where
   show SymTy = "symbol"
   show StrTy = "string"
   show NumTy = "number"
+  show BoolTy = "bool"
   show (ArrTy src tgt) = "(-> " ++ show src ++ " " ++ show tgt ++ ")"
   show (ListTy xs) = "(" ++ unwords (map show xs) ++ ")"
   show (EitherTy xs) = "(| " ++ unwords (map show xs) ++ ")"

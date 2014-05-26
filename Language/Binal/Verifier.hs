@@ -113,6 +113,7 @@ examineNames' (Lit (SymLit s) pos) = do
     else return [NotInScope s pos]
 examineNames' (Lit (StrLit _) _) = return []
 examineNames' (Lit (NumLit _) _) = return []
+examineNames' (Lit (BoolLit _) _) = return []
 examineNames' (List [] _) = return []
 examineNames' (List xs _) = do
   env <- get
@@ -208,6 +209,7 @@ freshPoly' (LitTy lit) = return (LitTy lit)
 freshPoly' SymTy = return SymTy
 freshPoly' StrTy = return StrTy
 freshPoly' NumTy = return NumTy
+freshPoly' BoolTy = return BoolTy
 freshPoly' (ArrTy x y) = ArrTy <$> freshPoly' x <*> freshPoly' y
 freshPoly' (ListTy tys) = ListTy <$> mapM freshPoly' tys
 freshPoly' (EitherTy tys) = EitherTy <$> mapM freshPoly' tys
@@ -233,6 +235,8 @@ inferTypeOfParams (List xs pos) = do
   return (TyList xs' ty pos)
 
 inferType' :: AST -> TypeInferer TypedAST
+inferType' (Lit lit@(SymLit "true") pos) = return (TyLit lit (LitTy (BoolLit True)) pos)
+inferType' (Lit lit@(SymLit "false") pos) = return (TyLit lit (LitTy (BoolLit False)) pos)
 inferType' (Lit lit@(SymLit s) pos) = do
   env <- use _1
   ty <- freshPoly (Maybe.fromJust (HashMap.lookup s env))
@@ -423,6 +427,7 @@ subst _ _ (LitTy lit) = LitTy lit
 subst _ _ SymTy = SymTy
 subst _ _ StrTy = StrTy
 subst _ _ NumTy = NumTy
+subst _ _ BoolTy = BoolTy
 subst i x (ArrTy y z) = ArrTy (subst i x y) (subst i x z)
 subst i x (ListTy xs) = ListTy (map (subst i x) xs)
 subst i x (EitherTy xs) = EitherTy (map (subst i x) xs)
@@ -484,6 +489,8 @@ unify' (Subtype s t absurd:c)
               (LitTy (StrLit _), StrTy) -> do
                 unify' c
               (LitTy (NumLit _), NumTy) -> do
+                unify' c
+              (LitTy (BoolLit _), BoolTy) -> do
                 unify' c
               (MutableTy s1, MutableTy t1) ->
                 unify' (Subtype s1 t1 absurd:c)

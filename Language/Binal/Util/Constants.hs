@@ -16,7 +16,7 @@ keywords = HashSet.fromList
             ]
 
 primitives :: HashSet.HashSet String
-primitives = HashSet.fromList (HashMap.keys initialTypeEnv)
+primitives = HashSet.fromList ("true":"false":HashMap.keys initialTypeEnv)
 
 initialVarList :: [Variable]
 initialVarList = [1..]

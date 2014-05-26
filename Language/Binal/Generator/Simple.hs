@@ -242,6 +242,8 @@ generateExpr (TyList (f:args) _ _) = do
 generateExpr (TyList [] _ _) = undefined
 
 generateMatching :: TyKind -> JSAST -> JSAST
+generateMatching (LitTy (StrLit s)) jast = BinaryJSAST "===" jast (StrLitJSAST s)
+generateMatching (LitTy (NumLit n)) jast = BinaryJSAST "===" jast (NumLitJSAST n)
 generateMatching StrTy jast = BinaryJSAST "===" (UnaryJSAST "typeof" jast) (StrLitJSAST "string")
 generateMatching NumTy jast = BinaryJSAST "===" (UnaryJSAST "typeof" jast) (StrLitJSAST "number")
 generateMatching (ListTy []) jast = jast

@@ -59,6 +59,10 @@ examineForms (List xs pos) = do
       if length xs < 3
         then [UnexpectedArity 3 (length xs) pos]
         else concatMap examineForms (tail xs)
+    Lit (SymLit "cond") _ -> do
+      if odd (length xs)
+        then [UnexpectedArity (length xs + 1) (length xs) pos]
+        else concatMap examineForms (tail xs)
     Lit (SymLit "object") _ -> do
       if odd (length (tail xs))
         then [UnexpectedArity (length (tail xs) + 1) (length (tail xs)) pos]
@@ -144,6 +148,9 @@ examineNames' (List xs _) = do
       put env'
       examineNames' body
     Lit (SymLit "match") _ -> do
+      rs <- mapM examineNames' (tail xs)
+      return (concat rs)
+    Lit (SymLit "cond") _ -> do
       rs <- mapM examineNames' (tail xs)
       return (concat rs)
     Lit (SymLit "object") _ -> do
@@ -334,6 +341,23 @@ inferType' (List xs pos) = do
               (TyLit (SymLit "match") SymTy pos1:unifiedExpr:unifiedPatterns)
               (unify (reverse constraints) retTy)
               pos)
+    Lit (SymLit "cond") pos1 -> do
+      exprs <- mapM inferType' (tail xs)
+      let conds = Maybe.catMaybes (map (\(x,i) -> if even i then Just x else Nothing) (zip (init exprs) ([0..] :: [Int])))
+      let thenClauses = Maybe.catMaybes (map (\(x,i) -> if odd i then Just x else Nothing) (zip exprs ([0..] :: [Int])))
+      let elseClause = last exprs
+      forM_ conds $ \cond -> do
+        let ty = Util.typeof cond
+        _3 %= (Subtype ty BoolTy (UnexpectedType BoolTy ty (Util.whereIs cond)) :)
+      unifyEnv
+      constraints <- use _3
+      let retTy = Util.flatEitherTy (negate 1) (EitherTy (map Util.typeof thenClauses ++ [Util.typeof elseClause]))
+      return (Util.mapTyKind
+                (unify (reverse constraints))
+                (TyList
+                  (TyLit (SymLit "cond") SymTy pos1:exprs)
+                  retTy
+                  pos))
     Lit (SymLit "object") pos1 -> do
       let symbols = Maybe.catMaybes (map (\(x,i) -> if even i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))
       let exprs = Maybe.catMaybes (map (\(x,i) -> if odd i then Just x else Nothing) (zip (tail xs) ([0..] :: [Int])))

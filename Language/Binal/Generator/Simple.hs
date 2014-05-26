@@ -183,6 +183,12 @@ generateExpr (TyList (TyLit (SymLit "match") ty1 pos:x:xs) _ _) = do
   if isTmpAssign
     then return (SeqJSAST [tmpAssign, y])
     else return y
+generateExpr (TyList (TyLit (SymLit "cond") _ _:xs) _ _) = do
+  values <- mapM generateExpr xs
+  let conds = Maybe.catMaybes (map (\(x,i) -> if even i then Just x else Nothing) (zip (init values) ([0..] :: [Int])))
+  let thenClauses = Maybe.catMaybes (map (\(x,i) -> if odd i then Just x else Nothing) (zip values ([0..] :: [Int])))
+  let elseClause = last values
+  return (foldr id elseClause (map (uncurry CondJSAST) (zip conds thenClauses)))
 generateExpr (TyList (TyLit (SymLit "num.add") _ _:x:y:[]) _ _) = do
   BinaryJSAST "+" <$> generateExpr x <*> generateExpr y
 generateExpr (TyList (TyLit (SymLit "str.add") _ _:x:y:[]) _ _) = do

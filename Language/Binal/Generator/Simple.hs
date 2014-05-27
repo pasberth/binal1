@@ -155,11 +155,24 @@ generateExpr (TyList (TyLit (SymLit "^") _ _:params:body:[]) _ _) = do
   case params' of
     [] -> return (FuncLitJSAST [] body')
     _ -> do
-      let initParams = init params'
-      let lastParam = last params'
-      let sliceCall = CallJSAST (MemberJSAST (MemberJSAST (MemberJSAST (IdentJSAST "Array") "prototype") "slice") "call") [IdentJSAST "arguments", NumLitJSAST (realToFrac (length initParams))]
-      let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (IdentJSAST "arguments") "length") (NumLitJSAST (realToFrac (length params')))) lastParam (CallJSAST (IdentJSAST "mkTuple") [sliceCall])
-      return (FuncLitJSAST params' (BlockJSAST [ExprStmtJSAST (AssignJSAST lastParam lastCheck), body']))
+      let isVarArgs (RecTy _ _) = True
+          isVarArgs (VarTy _) = True
+          isVarArgs (EitherTy tys) = any isVarArgs tys
+          isVarArgs _ = False
+
+      let lastParamTyAST = case params of
+                            TyList xs _ _ -> last xs
+                            x -> x
+
+      if isVarArgs (Util.typeof lastParamTyAST)
+        then do
+          let initParams = init params'
+          let lastParam = last params'
+          let sliceCall = CallJSAST (MemberJSAST (MemberJSAST (MemberJSAST (IdentJSAST "Array") "prototype") "slice") "call") [IdentJSAST "arguments", NumLitJSAST (realToFrac (length initParams))]
+          let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (IdentJSAST "arguments") "length") (NumLitJSAST (realToFrac (length params')))) lastParam (CallJSAST (IdentJSAST "mkTuple") [sliceCall])
+          return (FuncLitJSAST params' (BlockJSAST [ExprStmtJSAST (AssignJSAST lastParam lastCheck), body']))
+        else do
+          return (FuncLitJSAST params' body')
 generateExpr x@(TyList (TyLit (SymLit "seq") _ _:_) _ _) = do
   StmtExprJSAST <$> generateStmt x
 generateExpr x@(TyList (TyLit (SymLit "let") _ _:_) _ _) = do

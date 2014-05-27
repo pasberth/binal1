@@ -83,9 +83,9 @@ generateProgram tast = do
   ProgramJSAST [
     ExprStmtJSAST (StmtExprJSAST (
       BlockJSAST [
+        ExprStmtJSAST (StrLitJSAST "use strict"),
         DefVarsJSAST ["Binal"],
         ExprStmtJSAST (AssignJSAST (IdentJSAST "Binal") (CallJSAST (IdentJSAST "require") [StrLitJSAST "binal-runtime"])),
-        ExprStmtJSAST (StrLitJSAST "use strict"),
         x]))]
 
 generateFuncBody :: TypedAST -> JSAST

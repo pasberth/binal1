@@ -142,21 +142,6 @@ generateStmt (TyList (TyLit (SymLit "letrec") _ _:pattern:value:[]) _ _) = do
       return (BlockJSAST [declare, tmpAssign, assign])
 generateStmt (TyList (TyLit (SymLit "assume") _ _:_:[]) _ _) = do
   return (BlockJSAST [])
-{-generateExpr (TyList (TyLit (SymLit "loop") _ _:body:[]) _ _) = do
-  let declare = DefVarsJSAST ["recur", "terminate", "_tmp_ret"]
-  let params = [IdentJSAST "x"]
-  let sliceCall = CallJSAST (MemberJSAST (MemberJSAST (MemberJSAST (IdentJSAST "Array") "prototype") "slice") "call") [IdentJSAST "arguments", NumLitJSAST 0]
-  let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (IdentJSAST "arguments") "length") (NumLitJSAST 1)) (IdentJSAST "x") (NewJSAST (MemberJSAST (IdentJSAST "Binal") "Tuple") [sliceCall])
-  let recur = (FuncLitJSAST params
-                (BlockJSAST
-                  [ ExprStmtJSAST
-                      (AssignJSAST (last params) lastCheck),
-                    ExprStmtJSAST
-                      ]))
-
-  return
-    (BlockJSAST
-      [declare])-}
 generateStmt x = ExprStmtJSAST <$> generateExpr x
 
 generateTailRecur :: TypedAST -> TypedAST -> State [Int] JSAST

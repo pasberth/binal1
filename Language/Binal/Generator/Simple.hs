@@ -254,6 +254,8 @@ generateExpr (TyList (f:args) _ _) = do
         (isTmpAssign, tmp) <-
           case lastArg' of
             IdentJSAST _ -> return (False ,lastArg')
+            MemberJSAST _ _ -> return (False, lastArg')
+            ComputedMemberJSAST _ _ -> return (False, lastArg')
             _ -> do
               i <- gensym
               return (True, IdentJSAST ("_tmp" ++ show i))
@@ -276,9 +278,57 @@ generateExpr (TyList (f:args) _ _) = do
               then return (SeqJSAST [tmpAssign, call])
               else return call
   let godFunction this f' initArgs' lastArg' = do
-        if isVarArgs (Util.typeof (last args))
-          then godFunction1 this f' initArgs' lastArg'
-          else return (CallJSAST f' (initArgs' ++ [lastArg']))
+        case Util.typeof (last args) of
+          ListTy [] -> do
+            return (CallJSAST f' (initArgs' ++ [lastArg']))
+          ListTy tys -> do
+            (isTmpAssign, tmp) <-
+              case lastArg' of
+                IdentJSAST _ -> return (False, lastArg')
+                MemberJSAST _ _ -> return (False, lastArg')
+                ComputedMemberJSAST _ _ -> return (False, lastArg')
+                _ -> do
+                  i <- gensym
+                  return (True, IdentJSAST ("_tmp" ++ show i))
+
+            let lastAs = map (\i -> ComputedMemberJSAST (MemberJSAST tmp "xs") (NumLitJSAST (realToFrac i))) [0..(length tys - 1)]
+
+            if isVarArgs (last tys)
+              then do
+                let sliceCall = CallJSAST (MemberJSAST (MemberJSAST tmp "xs") "slice") [NumLitJSAST (realToFrac (length tys - 1))]
+                let newTuple = (NewJSAST (MemberJSAST (IdentJSAST "Binal") "Tuple") [sliceCall])
+
+                if isTmpAssign
+                  then do
+
+                    let assign = ExprStmtJSAST (AssignJSAST tmp lastArg')
+                    let ret = CallJSAST f' ((initArgs' ++ init lastAs) ++ [newTuple])
+                    return
+                      (StmtExprJSAST
+                        (BlockJSAST
+                          [
+                            assign,
+                            (ExprStmtJSAST ret)
+                          ]))
+                  else do
+                    return (CallJSAST f' ((initArgs' ++ init lastAs) ++ [newTuple]))
+              else do
+                if isTmpAssign
+                  then do
+                    let assign = ExprStmtJSAST (AssignJSAST tmp lastArg')
+                    return
+                      (StmtExprJSAST
+                        (BlockJSAST
+                          [
+                            assign,
+                            (ExprStmtJSAST (CallJSAST f' (initArgs' ++ lastAs)))
+                          ]))
+                  else do
+                    return (CallJSAST f' (initArgs' ++ lastAs))
+          _ -> do
+            if isVarArgs (Util.typeof (last args))
+              then godFunction1 this f' initArgs' lastArg'
+              else return (CallJSAST f' (initArgs' ++ [lastArg']))
 
 
   f' <- generateExpr f

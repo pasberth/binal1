@@ -26,6 +26,8 @@ data JSAST
   | UnaryJSAST String JSAST
   | BinaryJSAST String JSAST JSAST
   | SeqJSAST [JSAST]
+  | ThrowJSAST JSAST
+  | NewJSAST JSAST [JSAST]
   deriving (Eq)
 
 flatJSAST' :: JSAST -> [JSAST]
@@ -50,6 +52,8 @@ flatJSAST' (IfJSAST x y z) = [IfJSAST (flatJSAST x) (flatJSAST y) (flatJSAST z)]
 flatJSAST' (UnaryJSAST x y) = [UnaryJSAST x (flatJSAST y)]
 flatJSAST' (BinaryJSAST x y z) = [BinaryJSAST x (flatJSAST y) (flatJSAST z)]
 flatJSAST' (SeqJSAST x) =  [SeqJSAST (map flatJSAST x)]
+flatJSAST' (ThrowJSAST x) = [ThrowJSAST (flatJSAST x)]
+flatJSAST' (NewJSAST x y) = [NewJSAST (flatJSAST x) (map flatJSAST y)]
 
 flatJSAST :: JSAST -> JSAST
 flatJSAST (BlockJSAST xs) =
@@ -216,4 +220,15 @@ instance ToJSON JSAST where
     = object [
         Text.pack "type" .= "SequenceExpression",
         Text.pack "expressions" .= xs
+      ]
+  toJSON (ThrowJSAST x)
+    = object [
+        Text.pack "type" .= "ThrowStatement",
+        Text.pack "argument" .= x
+      ]
+  toJSON (NewJSAST x y)
+    = object [
+        Text.pack "type" .= "NewExpression",
+        Text.pack "callee" .= x,
+        Text.pack "arguments" .= y
       ]

@@ -46,6 +46,8 @@ humanReadable (IfJSAST x y z) = IfJSAST (humanReadable x) (humanReadable y) (hum
 humanReadable (BinaryJSAST x y z) = BinaryJSAST x (humanReadable y) (humanReadable z)
 humanReadable (UnaryJSAST x y) = UnaryJSAST x (humanReadable y)
 humanReadable (SeqJSAST xs) = SeqJSAST (map humanReadable xs)
+humanReadable (ThrowJSAST x) = ThrowJSAST (humanReadable x)
+humanReadable (NewJSAST x y) = NewJSAST (humanReadable x) (map humanReadable y)
 
 generateDeclare :: TypedAST -> JSAST
 generateDeclare = DefVarsJSAST . map GUtil.toJSSafeSymbol . Util.flatSymbolsT
@@ -218,7 +220,7 @@ generateExpr (TyList (TyLit (SymLit "match") ty1 pos:x:xs) _ _) = do
   let fs = map (\(expr, ty) -> case ty of
                   ArrTy ty' _ -> CondJSAST (generateMatching ty' tmp) expr
                   _ -> CondJSAST (UnaryJSAST "void" (NumLitJSAST 1)) expr) exprAndTypes
-  let y = foldr id (UnaryJSAST "void" (NumLitJSAST 0)) fs
+  let y = foldr id (StmtExprJSAST (ThrowJSAST (NewJSAST (IdentJSAST "NonExhaustivePatterns") [StrLitJSAST "Non-exhaustive patterns in match"]))) fs
   if isTmpAssign
     then return (SeqJSAST [tmpAssign, y])
     else return y
@@ -343,4 +345,4 @@ generateMatching (ObjectTy _ m) jast
   | otherwise = do
     let matchers = map (\(key,val) -> (generateMatching val (MemberJSAST jast key))) (HashMap.toList m)
     foldr1 (BinaryJSAST "&&") matchers
-generateMatching ty _ = UnaryJSAST "void" (StrLitJSAST (show ty))
+generateMatching _ _ = ThrowJSAST (NewJSAST (IdentJSAST "NonExhaustivePatterns") [StrLitJSAST "Non-exhaustive patterns"])

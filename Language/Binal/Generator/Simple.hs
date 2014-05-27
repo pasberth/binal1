@@ -174,7 +174,7 @@ generateExpr (TyList (TyLit (SymLit "^") _ _:params:body:[]) _ _) = do
           let initParams = init params'
           let lastParam = last params'
           let sliceCall = CallJSAST (MemberJSAST (MemberJSAST (MemberJSAST (IdentJSAST "Array") "prototype") "slice") "call") [IdentJSAST "arguments", NumLitJSAST (realToFrac (length initParams))]
-          let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (IdentJSAST "arguments") "length") (NumLitJSAST (realToFrac (length params')))) lastParam (CallJSAST (MemberJSAST (IdentJSAST "Binal") "mkTuple") [sliceCall])
+          let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (IdentJSAST "arguments") "length") (NumLitJSAST (realToFrac (length params')))) lastParam (NewJSAST (MemberJSAST (IdentJSAST "Binal") "Tuple") [sliceCall])
           return (FuncLitJSAST params' (BlockJSAST [ExprStmtJSAST (AssignJSAST lastParam lastCheck), body']))
         else do
           return (FuncLitJSAST params' body')
@@ -324,7 +324,7 @@ generateMatching (ListTy xs) jast = do
                 (zip (init xs) ([0..] :: [Int]))
   let sliceCall = CallJSAST (MemberJSAST (MemberJSAST jast "xs") "slice") [NumLitJSAST (realToFrac (length xs - 1))]
   let lastGet = ComputedMemberJSAST (MemberJSAST jast "xs") (NumLitJSAST (realToFrac (length xs - 1)))
-  let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (MemberJSAST jast "xs") "length") (NumLitJSAST (realToFrac (length xs)))) lastGet (CallJSAST (MemberJSAST (IdentJSAST "Binal") "mkTuple") [sliceCall])
+  let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (MemberJSAST jast "xs") "length") (NumLitJSAST (realToFrac (length xs)))) lastGet (NewJSAST (MemberJSAST (IdentJSAST "Binal") "Tuple") [sliceCall])
   let cond1 = generateMatching (last xs) lastCheck
   BinaryJSAST "&&" (BinaryJSAST "instanceof" jast (MemberJSAST (IdentJSAST "Binal") "Tuple")) (foldr (BinaryJSAST "&&") cond1 conds)
 generateMatching (VarTy _) jast = jast

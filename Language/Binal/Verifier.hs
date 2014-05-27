@@ -374,14 +374,13 @@ inferType' (List xs pos) = do
           ty
           pos)
     Lit (SymLit ".") pos1 -> do
-      let Lit (SymLit propertyName) _ = xs !! 2
+      let Lit (SymLit propertyName) pos2 = xs !! 2
       let expr = xs !! 1
       typedExpr <- inferType' expr
       let exprTy = Util.typeof typedExpr
       i <- gensym
       x <- gensym
-      _1 %= HashMap.insert propertyName (VarTy x)
-      typedProp <- inferType' (xs !! 2)
+      let typedProp = TyLit (SymLit propertyName) (VarTy x) pos2
       let expected = ObjectTy [i] (HashMap.singleton propertyName (VarTy x))
       _3 %= (Equal expected exprTy (UnexpectedType expected exprTy (Util.whereIs typedExpr)) :)
       unifyEnv

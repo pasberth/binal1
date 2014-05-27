@@ -50,6 +50,7 @@ humanReadable (UnaryJSAST x y) = UnaryJSAST x (humanReadable y)
 humanReadable (SeqJSAST xs) = SeqJSAST (map humanReadable xs)
 humanReadable (ThrowJSAST x) = ThrowJSAST (humanReadable x)
 humanReadable (NewJSAST x y) = NewJSAST (humanReadable x) (map humanReadable y)
+humanReadable (WhileJSAST x y) = WhileJSAST (humanReadable x) (humanReadable y)
 
 generateDeclare :: TypedAST -> JSAST
 generateDeclare = DefVarsJSAST . map GUtil.toJSSafeSymbol . Util.flatSymbolsT
@@ -141,7 +142,56 @@ generateStmt (TyList (TyLit (SymLit "letrec") _ _:pattern:value:[]) _ _) = do
       return (BlockJSAST [declare, tmpAssign, assign])
 generateStmt (TyList (TyLit (SymLit "assume") _ _:_:[]) _ _) = do
   return (BlockJSAST [])
+{-generateExpr (TyList (TyLit (SymLit "loop") _ _:body:[]) _ _) = do
+  let declare = DefVarsJSAST ["recur", "terminate", "_tmp_ret"]
+  let params = [IdentJSAST "x"]
+  let sliceCall = CallJSAST (MemberJSAST (MemberJSAST (MemberJSAST (IdentJSAST "Array") "prototype") "slice") "call") [IdentJSAST "arguments", NumLitJSAST 0]
+  let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (IdentJSAST "arguments") "length") (NumLitJSAST 1)) (IdentJSAST "x") (NewJSAST (MemberJSAST (IdentJSAST "Binal") "Tuple") [sliceCall])
+  let recur = (FuncLitJSAST params
+                (BlockJSAST
+                  [ ExprStmtJSAST
+                      (AssignJSAST (last params) lastCheck),
+                    ExprStmtJSAST
+                      ]))
+
+  return
+    (BlockJSAST
+      [declare])-}
 generateStmt x = ExprStmtJSAST <$> generateExpr x
+
+generateTailRecur :: TypedAST -> TypedAST -> State [Int] JSAST
+generateTailRecur params body = do
+  let params' = generateParams params
+  let body' = generateFuncBody body
+
+  recurParamsS <- mapM (\_ -> (\i -> ("_tmp" ++ show i)) <$> gensym) params'
+  let recurParams = map IdentJSAST recurParamsS
+  let declare = DefVarsJSAST (["recur", "terminate", "_tmp_ret", "_tmp_is_recur"] ++ recurParamsS)
+  let recur = FuncLitJSAST recurParams (BlockJSAST (map (\(p1,p2) -> ExprStmtJSAST (AssignJSAST p1 p2)) (zip params' recurParams)))
+  let isRecur = IdentJSAST "true"
+  let sliceCall = CallJSAST (MemberJSAST (MemberJSAST (MemberJSAST (IdentJSAST "Array") "prototype") "slice") "call") [IdentJSAST "arguments", NumLitJSAST 0]
+  let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (IdentJSAST "arguments") "length") (NumLitJSAST 1)) (IdentJSAST "ret") (NewJSAST (MemberJSAST (IdentJSAST "Binal") "Tuple") [sliceCall])
+  let terminateBody = BlockJSAST [
+                        ExprStmtJSAST (AssignJSAST (IdentJSAST "_tmp_ret") (IdentJSAST "ret"))]
+  let terminate = FuncLitJSAST [IdentJSAST "ret"]
+                    (BlockJSAST
+                      [ ExprStmtJSAST
+                          (AssignJSAST (IdentJSAST "_tmp_is_recur") (IdentJSAST "false")),
+                        ExprStmtJSAST
+                          (AssignJSAST (IdentJSAST "ret") lastCheck),
+                        terminateBody])
+  return
+    (BlockJSAST
+        [ declare,
+          ExprStmtJSAST (AssignJSAST (IdentJSAST "recur") recur),
+          ExprStmtJSAST (AssignJSAST (IdentJSAST "terminate") terminate),
+          ExprStmtJSAST (AssignJSAST (IdentJSAST "_tmp_ret") (IdentJSAST "undefined")),
+          ExprStmtJSAST (AssignJSAST (IdentJSAST "_tmp_is_recur") isRecur),
+          WhileJSAST
+            (IdentJSAST "_tmp_is_recur")
+            (ExprStmtJSAST (StmtExprJSAST body')),
+          RetJSAST (IdentJSAST "_tmp_ret")
+        ])
 
 generateExpr :: TypedAST -> State [Int] JSAST
 generateExpr (TyLit (SymLit s) _ _) = case s of
@@ -156,7 +206,10 @@ generateExpr (TyLit (BoolLit True) _ _) = return (IdentJSAST "true")
 generateExpr (TyLit (BoolLit False) _ _) = return (IdentJSAST "false")
 generateExpr (TyList (TyLit (SymLit "^") _ _:params:body:[]) _ _) = do
   let params' = generateParams params
-  let body' = generateFuncBody body
+  body' <- case body of
+                (TyList (TyLit (SymLit "loop") _ _:body1:[]) _ _)
+                  -> generateTailRecur params body1
+                _ -> return (generateFuncBody body)
   case params' of
     [] -> return (FuncLitJSAST [] body')
     _ -> do
@@ -236,6 +289,10 @@ generateExpr (TyList (TyLit (SymLit "mutable") _ _:x:[]) _ _) = do
   generateExpr x
 generateExpr (TyList (TyLit (SymLit "unmutable") _ _:x:[]) _ _) = do
   generateExpr x
+generateExpr (TyList (f@(TyLit (SymLit "recur") _ _):args) _ _) = do
+  f' <- generateExpr f
+  args' <- mapM generateExpr args
+  return (CallJSAST f' args')
 generateExpr (TyList (f:args) _ _) = do
   let isVarArgs (RecTy _ _) = True
       isVarArgs (VarTy _) = True

@@ -4,6 +4,7 @@ module Language.Binal( module Language.Binal.Types
                      , module Language.Binal.StyleGuidance
                      , module Language.Binal.Parser
                      , module Language.Binal.Verifier
+                     , module Language.Binal.Optimizer
                      , module Language.Binal.Generator
                      , module Language.Binal.CLI
                      , module Language.Binal.REPL
@@ -16,6 +17,7 @@ import Language.Binal.PrettyPrint
 import Language.Binal.StyleGuidance
 import Language.Binal.Parser
 import Language.Binal.Verifier
+import Language.Binal.Optimizer
 import Language.Binal.Generator
 import Language.Binal.CLI
 import Language.Binal.REPL

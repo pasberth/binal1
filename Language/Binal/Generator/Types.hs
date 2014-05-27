@@ -28,6 +28,7 @@ data JSAST
   | SeqJSAST [JSAST]
   | ThrowJSAST JSAST
   | NewJSAST JSAST [JSAST]
+  | WhileJSAST JSAST JSAST
   deriving (Eq)
 
 flatJSAST' :: JSAST -> [JSAST]
@@ -54,6 +55,7 @@ flatJSAST' (BinaryJSAST x y z) = [BinaryJSAST x (flatJSAST y) (flatJSAST z)]
 flatJSAST' (SeqJSAST x) =  [SeqJSAST (map flatJSAST x)]
 flatJSAST' (ThrowJSAST x) = [ThrowJSAST (flatJSAST x)]
 flatJSAST' (NewJSAST x y) = [NewJSAST (flatJSAST x) (map flatJSAST y)]
+flatJSAST' (WhileJSAST x y) = [WhileJSAST (flatJSAST x) (flatJSAST y)]
 
 flatJSAST :: JSAST -> JSAST
 flatJSAST (BlockJSAST xs) =
@@ -230,4 +232,10 @@ instance ToJSON JSAST where
         Text.pack "type" .= "NewExpression",
         Text.pack "callee" .= x,
         Text.pack "arguments" .= y
+      ]
+  toJSON (WhileJSAST x y)
+    = object [
+        Text.pack "type" .= "WhileStatement",
+        Text.pack "test" .= x,
+        Text.pack "body" .= y
       ]

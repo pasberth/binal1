@@ -43,6 +43,7 @@ library
     , Language.Binal.StyleGuidance
     , Language.Binal.Parser
     , Language.Binal.Verifier
+    , Language.Binal.Optimizer
     , Language.Binal.Generator
     , Language.Binal.Generator.Types
     , Language.Binal.Generator.Util

@@ -22,11 +22,12 @@ main = do
               maybeTypedAST <- B.checkAST ast
               case maybeTypedAST of
                 Just typedAST -> do
+                  let optimizedAST = B.optimizeTailCall typedAST
                   let cleanPath = System.FilePath.Posix.dropExtension path
                   let jsonPath = System.FilePath.Posix.addExtension cleanPath "json"
                   let binaliPath = System.FilePath.Posix.addExtension cleanPath "binali"
-                  writeFile jsonPath (B.generateString typedAST)
-                  writeFile binaliPath (B.generateInterface typedAST)
+                  writeFile jsonPath (B.generateString optimizedAST)
+                  writeFile binaliPath (B.generateInterface optimizedAST)
                 Nothing -> do
                   return ()
             Nothing -> System.Exit.exitFailure

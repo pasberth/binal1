@@ -144,6 +144,12 @@ generateStmt (TyList (TyLit (SymLit "assume") _ _:_:[]) _ _) = do
   return (BlockJSAST [])
 generateStmt x = ExprStmtJSAST <$> generateExpr x
 
+unRet :: JSAST -> JSAST
+unRet (IfJSAST x y z) = IfJSAST x (unRet y) (unRet z)
+unRet (BlockJSAST xs) = BlockJSAST (map unRet xs)
+unRet (RetJSAST x) = ExprStmtJSAST x
+unRet x = x
+
 generateTailRecur :: TypedAST -> TypedAST -> State [Int] JSAST
 generateTailRecur params body = do
   let params' = generateParams params
@@ -174,7 +180,7 @@ generateTailRecur params body = do
           ExprStmtJSAST (AssignJSAST (IdentJSAST "_tmp_is_recur") isRecur),
           WhileJSAST
             (IdentJSAST "_tmp_is_recur")
-            (ExprStmtJSAST (StmtExprJSAST body')),
+            (unRet body'),
           RetJSAST (IdentJSAST "_tmp_ret")
         ])
 

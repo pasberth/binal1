@@ -206,7 +206,9 @@ generateExpr (TyList (TyLit (SymLit "match") ty1 pos:x:xs) _ _) = do
         let s = "_tmp" ++ show i
         return (True, s, IdentJSAST s)
   let tmpAssign = AssignJSAST tmp value
-  zs <- mapM (\y -> generateExpr (TyList [y, TyLit (SymLit sym) (Util.typeof x) (Util.whereIs x)] ty1 pos)) xs
+  zs <- mapM (\y -> generateExpr (TyList [y, TyLit (SymLit sym) (case Util.typeof y of
+                                                                    ArrTy s _ -> s
+                                                                    _ -> Util.typeof x) (Util.whereIs x)] ty1 pos)) xs
   let exprAndTypes = zip zs (map Util.typeof xs)
   let fs = map (\(expr, ty) -> case ty of
                   ArrTy ty' _ -> CondJSAST (generateMatching ty' tmp) expr
@@ -230,6 +232,50 @@ generateExpr (TyList (TyLit (SymLit "mutable") _ _:x:[]) _ _) = do
 generateExpr (TyList (TyLit (SymLit "unmutable") _ _:x:[]) _ _) = do
   generateExpr x
 generateExpr (TyList (f:args) _ _) = do
+  let isVarArgs (RecTy _ _) = True
+      isVarArgs (VarTy _) = True
+      isVarArgs (EitherTy tys) = any isVarArgs tys
+      isVarArgs _ = False
+
+  let godFunction1 this f' initArgs' lastArg' = do
+        (isTmpAssignF, tmpF) <-
+          case f' of
+            IdentJSAST _ -> return (False, f')
+            MemberJSAST _ _ -> return (False, f')
+            ComputedMemberJSAST _ _ -> return (False, f')
+            _ -> do
+              i <- gensym
+              return (True, IdentJSAST ("_tmp" ++ show i))
+        (isTmpAssign, tmp) <-
+          case lastArg' of
+            IdentJSAST _ -> return (False ,lastArg')
+            _ -> do
+              i <- gensym
+              return (True, IdentJSAST ("_tmp" ++ show i))
+        let tmpAssignF = AssignJSAST tmpF f'
+        let tmpAssign = AssignJSAST tmp lastArg'
+        let normalCall = CallJSAST tmpF (initArgs' ++ [tmp])
+        let noName = case initArgs' of
+                      [] -> MemberJSAST tmp "xs"
+                      _ -> CallJSAST (MemberJSAST (ArrLitJSAST initArgs') "concat") [MemberJSAST tmp "xs"]
+        let alternateCall = CallJSAST (MemberJSAST tmpF "apply") ([this] ++ [noName])
+        let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (IdentJSAST "Tuple"))
+        let call = callTest alternateCall normalCall
+        if isTmpAssignF
+          then
+            if isTmpAssign
+              then return (SeqJSAST [tmpAssignF, tmpAssign, call])
+              else return (SeqJSAST [tmpAssignF, call])
+          else
+            if isTmpAssign
+              then return (SeqJSAST [tmpAssign, call])
+              else return call
+  let godFunction this f' initArgs' lastArg' = do
+        if isVarArgs (Util.typeof (last args))
+          then godFunction1 this f' initArgs' lastArg'
+          else return (CallJSAST f' (initArgs' ++ [lastArg']))
+
+
   f' <- generateExpr f
   case args of
     [] -> return (CallJSAST f' [])
@@ -245,62 +291,17 @@ generateExpr (TyList (f:args) _ _) = do
               _ -> do
                 i <- gensym
                 return (True, IdentJSAST ("_tmp" ++ show i))
-          (isTmpAssign, tmp) <-
-            case lastArg' of
-              IdentJSAST _ -> return (False ,lastArg')
-              _ -> do
-                i <- gensym
-                return (True, IdentJSAST ("_tmp" ++ show i))
-          let tmpF = MemberJSAST tmpThis name
           let tmpAssignThis = AssignJSAST tmpThis this
-          let tmpAssign = AssignJSAST tmp lastArg'
-          let normalCall = CallJSAST tmpF (initArgs' ++ [tmp])
-          let noName = case initArgs' of
-                          [] -> MemberJSAST tmp "xs"
-                          _ -> CallJSAST (MemberJSAST (ArrLitJSAST initArgs') "concat") [(MemberJSAST tmp "xs")]
-          let alternateCall = CallJSAST (MemberJSAST tmpF "apply") ([tmpThis] ++ [noName])
-          let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (IdentJSAST "Tuple"))
-          let call = callTest alternateCall normalCall
           if isTmpAssignThis
-            then
-              if isTmpAssign
-                then return (SeqJSAST [tmpAssignThis, tmpAssign, call])
-                else return (SeqJSAST [tmpAssignThis, call])
-            else
-              if isTmpAssign
-                then return (SeqJSAST [tmpAssign, call])
-                else return call
+            then do
+              x <- godFunction tmpThis (MemberJSAST tmpThis name) initArgs' lastArg'
+              case x of
+                SeqJSAST xs -> return (SeqJSAST (tmpAssignThis:xs))
+                _ -> return (SeqJSAST [tmpAssignThis, x])
+            else do
+              godFunction tmpThis f' initArgs' lastArg'
         _ -> do
-          (isTmpAssignF, tmpF) <-
-            case f' of
-              IdentJSAST _ -> return (False, f')
-              _ -> do
-                i <- gensym
-                return (True, IdentJSAST ("_tmp" ++ show i))
-          (isTmpAssign, tmp) <-
-            case lastArg' of
-              IdentJSAST _ -> return (False ,lastArg')
-              _ -> do
-                i <- gensym
-                return (True, IdentJSAST ("_tmp" ++ show i))
-          let tmpAssignF = AssignJSAST tmpF f'
-          let tmpAssign = AssignJSAST tmp lastArg'
-          let normalCall = CallJSAST tmpF (initArgs' ++ [tmp])
-          let noName = case initArgs' of
-                        [] -> MemberJSAST tmp "xs"
-                        _ -> CallJSAST (MemberJSAST (ArrLitJSAST initArgs') "concat") [MemberJSAST tmp "xs"]
-          let alternateCall = CallJSAST (MemberJSAST tmpF "apply") ([IdentJSAST "this"] ++ [noName])
-          let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (IdentJSAST "Tuple"))
-          let call = callTest alternateCall normalCall
-          if isTmpAssignF
-            then
-              if isTmpAssign
-                then return (SeqJSAST [tmpAssignF, tmpAssign, call])
-                else return (SeqJSAST [tmpAssignF, call])
-            else
-              if isTmpAssign
-                then return (SeqJSAST [tmpAssign, call])
-                else return call
+          godFunction (IdentJSAST "this") f' initArgs' lastArg'
 generateExpr (TyList [] _ _) = undefined
 
 generateMatching :: TyKind -> JSAST -> JSAST

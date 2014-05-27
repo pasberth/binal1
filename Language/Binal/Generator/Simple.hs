@@ -141,33 +141,9 @@ generateStmt x = ExprStmtJSAST <$> generateExpr x
 generateExpr :: TypedAST -> State [Int] JSAST
 generateExpr (TyLit (SymLit s) _ _) = case s of
     "num.add" ->
-      generateExpr
-        (TyList
-          [ TyLit (SymLit "^") undefined undefined,
-            TyList
-              [ TyLit (SymLit "x") undefined undefined,
-                TyLit (SymLit "y") undefined undefined ]
-              undefined undefined,
-            TyList
-              [ TyLit (SymLit "num.add") undefined undefined,
-                TyLit (SymLit "x") undefined undefined,
-                TyLit (SymLit "y") undefined undefined ]
-              undefined undefined
-          ] undefined undefined)
+      return (FuncLitJSAST [IdentJSAST "x", IdentJSAST "y"] (BlockJSAST [RetJSAST (BinaryJSAST "+" (IdentJSAST "x") (IdentJSAST "y"))]))
     "str.add" ->
-      generateExpr
-        (TyList
-          [ TyLit (SymLit "^") undefined undefined,
-            TyList
-              [ TyLit (SymLit "x") undefined undefined,
-              TyLit (SymLit "y") undefined undefined ]
-              undefined undefined,
-            TyList
-              [ TyLit (SymLit "str.add") undefined undefined,
-                TyLit (SymLit "x") undefined undefined,
-                TyLit (SymLit "y") undefined undefined ]
-              undefined undefined
-          ] undefined undefined)
+      return (FuncLitJSAST [IdentJSAST "x", IdentJSAST "y"] (BlockJSAST [RetJSAST (BinaryJSAST "+" (IdentJSAST "x") (IdentJSAST "y"))]))
     _ -> return (IdentJSAST (GUtil.toJSSafeSymbol s))
 generateExpr (TyLit (StrLit s) _ _) = return (StrLitJSAST s)
 generateExpr (TyLit (NumLit i) _ _) = return (NumLitJSAST i)

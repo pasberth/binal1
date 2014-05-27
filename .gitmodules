@@ -1,0 +1,3 @@
+[submodule "binal-runtime"]
+	path = binal-runtime
+	url = git@github.com:pasberth/binal-runtime.git

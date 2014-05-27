@@ -78,10 +78,15 @@ generateString :: TypedAST -> String
 generateString = BS.toString . Aeson.encode . Aeson.toJSON . flatJSAST . humanReadable . flatJSAST . generateProgram
 
 generateProgram :: TypedAST -> JSAST
-generateProgram tast =
-  case evalState (generateStmt tast) [0..] of
-    BlockJSAST xs -> ProgramJSAST xs
-    x -> x
+generateProgram tast = do
+  let x = evalState (generateStmt tast) [0..]
+  ProgramJSAST [
+    ExprStmtJSAST (StmtExprJSAST (
+      BlockJSAST [
+        DefVarsJSAST ["Binal"],
+        ExprStmtJSAST (AssignJSAST (IdentJSAST "Binal") (CallJSAST (IdentJSAST "require") [StrLitJSAST "binal-runtime"])),
+        ExprStmtJSAST (StrLitJSAST "use strict"),
+        x]))]
 
 generateFuncBody :: TypedAST -> JSAST
 generateFuncBody tast = do
@@ -169,7 +174,7 @@ generateExpr (TyList (TyLit (SymLit "^") _ _:params:body:[]) _ _) = do
           let initParams = init params'
           let lastParam = last params'
           let sliceCall = CallJSAST (MemberJSAST (MemberJSAST (MemberJSAST (IdentJSAST "Array") "prototype") "slice") "call") [IdentJSAST "arguments", NumLitJSAST (realToFrac (length initParams))]
-          let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (IdentJSAST "arguments") "length") (NumLitJSAST (realToFrac (length params')))) lastParam (CallJSAST (IdentJSAST "mkTuple") [sliceCall])
+          let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (IdentJSAST "arguments") "length") (NumLitJSAST (realToFrac (length params')))) lastParam (CallJSAST (MemberJSAST (IdentJSAST "Binal") "mkTuple") [sliceCall])
           return (FuncLitJSAST params' (BlockJSAST [ExprStmtJSAST (AssignJSAST lastParam lastCheck), body']))
         else do
           return (FuncLitJSAST params' body')
@@ -213,7 +218,7 @@ generateExpr (TyList (TyLit (SymLit "match") ty1 pos:x:xs) _ _) = do
   let fs = map (\(expr, ty) -> case ty of
                   ArrTy ty' _ -> CondJSAST (generateMatching ty' tmp) expr
                   _ -> CondJSAST (UnaryJSAST "void" (NumLitJSAST 1)) expr) exprAndTypes
-  let y = foldr id (StmtExprJSAST (ThrowJSAST (NewJSAST (IdentJSAST "NonExhaustivePatterns") [StrLitJSAST "Non-exhaustive patterns in match"]))) fs
+  let y = foldr id (StmtExprJSAST (ThrowJSAST (NewJSAST (MemberJSAST (IdentJSAST "Binal") "NonExhaustivePatterns") [StrLitJSAST "Non-exhaustive patterns in match"]))) fs
   if isTmpAssign
     then return (SeqJSAST [tmpAssign, y])
     else return y
@@ -259,7 +264,7 @@ generateExpr (TyList (f:args) _ _) = do
                       [] -> MemberJSAST tmp "xs"
                       _ -> CallJSAST (MemberJSAST (ArrLitJSAST initArgs') "concat") [MemberJSAST tmp "xs"]
         let alternateCall = CallJSAST (MemberJSAST tmpF "apply") ([this] ++ [noName])
-        let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (IdentJSAST "Tuple"))
+        let callTest = CondJSAST (BinaryJSAST "instanceof" tmp (MemberJSAST (IdentJSAST "Binal") "Tuple"))
         let call = callTest alternateCall normalCall
         if isTmpAssignF
           then
@@ -319,9 +324,9 @@ generateMatching (ListTy xs) jast = do
                 (zip (init xs) ([0..] :: [Int]))
   let sliceCall = CallJSAST (MemberJSAST (MemberJSAST jast "xs") "slice") [NumLitJSAST (realToFrac (length xs - 1))]
   let lastGet = ComputedMemberJSAST (MemberJSAST jast "xs") (NumLitJSAST (realToFrac (length xs - 1)))
-  let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (MemberJSAST jast "xs") "length") (NumLitJSAST (realToFrac (length xs)))) lastGet (CallJSAST (IdentJSAST "mkTuple") [sliceCall])
+  let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (MemberJSAST jast "xs") "length") (NumLitJSAST (realToFrac (length xs)))) lastGet (CallJSAST (MemberJSAST (IdentJSAST "Binal") "mkTuple") [sliceCall])
   let cond1 = generateMatching (last xs) lastCheck
-  BinaryJSAST "&&" (BinaryJSAST "instanceof" jast (IdentJSAST "Tuple")) (foldr (BinaryJSAST "&&") cond1 conds)
+  BinaryJSAST "&&" (BinaryJSAST "instanceof" jast (MemberJSAST (IdentJSAST "Binal") "Tuple")) (foldr (BinaryJSAST "&&") cond1 conds)
 generateMatching (VarTy _) jast = jast
 generateMatching (RecTy _ ty) jast = generateMatching ty jast
 generateMatching (EitherTy xs) jast = do
@@ -337,4 +342,4 @@ generateMatching (ObjectTy _ m) jast
   | otherwise = do
     let matchers = map (\(key,val) -> (generateMatching val (MemberJSAST jast key))) (HashMap.toList m)
     foldr1 (BinaryJSAST "&&") matchers
-generateMatching _ _ = ThrowJSAST (NewJSAST (IdentJSAST "NonExhaustivePatterns") [StrLitJSAST "Non-exhaustive patterns"])
+generateMatching _ _ = ThrowJSAST (NewJSAST (MemberJSAST (IdentJSAST "Binal") "NonExhaustivePatterns") [StrLitJSAST "Non-exhaustive patterns"])

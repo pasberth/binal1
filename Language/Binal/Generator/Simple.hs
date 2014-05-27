@@ -338,13 +338,15 @@ generateExpr (TyList (f:args) _ _) = do
             if isVarArgs (last tys)
               then do
                 let sliceCall = CallJSAST (MemberJSAST (MemberJSAST tmp "xs") "slice") [NumLitJSAST (realToFrac (length tys - 1))]
+                let lastGet = ComputedMemberJSAST (MemberJSAST tmp "xs") (NumLitJSAST (realToFrac (length tys - 1)))
                 let newTuple = (NewJSAST (MemberJSAST (IdentJSAST "Binal") "Tuple") [sliceCall])
+                let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (MemberJSAST tmp "xs") "length") (NumLitJSAST (realToFrac (length tys)))) lastGet newTuple
 
                 if isTmpAssign
                   then do
 
                     let assign = ExprStmtJSAST (AssignJSAST tmp lastArg')
-                    let ret = CallJSAST f' ((initArgs' ++ init lastAs) ++ [newTuple])
+                    let ret = CallJSAST f' ((initArgs' ++ init lastAs) ++ [lastCheck])
                     return
                       (StmtExprJSAST
                         (BlockJSAST
@@ -353,7 +355,7 @@ generateExpr (TyList (f:args) _ _) = do
                             (ExprStmtJSAST ret)
                           ]))
                   else do
-                    return (CallJSAST f' ((initArgs' ++ init lastAs) ++ [newTuple]))
+                    return (CallJSAST f' ((initArgs' ++ init lastAs) ++ [lastCheck]))
               else do
                 if isTmpAssign
                   then do

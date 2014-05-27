@@ -166,15 +166,14 @@ instance ToJSON JSAST where
                Text.pack "expression" .= x ]
   toJSON (StmtExprJSAST body)
     = do
-      let tmpDeclare = DefVarsJSAST ["_tmp", "_tmp1", "_tmp_this"]
       let body' = case body of
                     BlockJSAST [] -> BlockJSAST []
                     BlockJSAST xs ->
                       case last xs of
-                        ExprStmtJSAST x -> BlockJSAST (tmpDeclare : (init xs ++ [RetJSAST x]))
-                        _ -> BlockJSAST (tmpDeclare:xs)
-                    ExprStmtJSAST x -> BlockJSAST [tmpDeclare,RetJSAST x]
-                    x -> BlockJSAST [tmpDeclare, x]
+                        ExprStmtJSAST x -> BlockJSAST (init xs ++ [RetJSAST x])
+                        _ -> BlockJSAST xs
+                    ExprStmtJSAST x -> BlockJSAST [RetJSAST x]
+                    x -> BlockJSAST [x]
 
       toJSON (CallJSAST (FuncLitJSAST [] body') [])
   toJSON (ProgramJSAST xs)

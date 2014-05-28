@@ -9,7 +9,6 @@ import qualified Language.Binal.Util.Gen as Gen
 freeVariables :: TyKind -> [Variable]
 freeVariables (VarTy i) = [i]
 freeVariables (RecTy i ty) = filter (/=i) (freeVariables ty)
-freeVariables (LitTy _) = []
 freeVariables SymTy = []
 freeVariables StrTy = []
 freeVariables NumTy = []
@@ -39,7 +38,6 @@ flatListTy' xs = do
 flatListTy :: TyKind -> TyKind
 flatListTy (VarTy i) = VarTy i
 flatListTy (RecTy i ty) = RecTy i (flatListTy ty)
-flatListTy (LitTy lit) = LitTy lit
 flatListTy SymTy = SymTy
 flatListTy StrTy = StrTy
 flatListTy NumTy = NumTy
@@ -83,7 +81,6 @@ showTy' (RecTy i ty) = do
   x <- showTy' (VarTy i)
   y <- showTy' ty
   return ("(recur " ++ x ++ " " ++ y ++ ")")
-showTy' (LitTy lit) = return (show lit)
 showTy' SymTy = return "symbol"
 showTy' StrTy = return "string"
 showTy' NumTy = return "number"
@@ -132,7 +129,6 @@ showTy2 ty1 ty2 = evalState (do { x <- showTy' ty1; y <- showTy' ty2; return (x,
 
 traverseVarTyM :: Monad m => (TyKind -> m ()) -> TyKind -> m ()
 traverseVarTyM f ty@(VarTy _) = f ty
-traverseVarTyM _ (LitTy _) = return ()
 traverseVarTyM _ SymTy = return ()
 traverseVarTyM _ StrTy = return ()
 traverseVarTyM _ NumTy = return ()

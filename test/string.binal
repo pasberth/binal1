@@ -4,9 +4,7 @@
 
 (let + (^ (s1 s2) (str.add s1 s2)))
 
-(let desc (^ (x y) (describe (+ "" x) y)))
-
-(desc "string" (^ () (seq
-  (desc "s1 + s2" (^ () (seq
+(describe "string" (^ () (seq
+  (describe "s1 + s2" (^ () (seq
     (it "should be concatenated" (^ ()
       ((. assert equal) (+ "abc" "def") "abcdef")))))))))

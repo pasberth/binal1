@@ -69,7 +69,7 @@ data TyKind
   | ArrTy TyKind TyKind
   | ListTy [TyKind]
   | EitherTy [TyKind]
-  | ObjectTy [Variable] (HashMap.HashMap String TyKind)
+  | ObjectTy (HashSet.HashSet Variable) (HashMap.HashMap String TyKind)
   | MutableTy TyKind
   deriving (Eq)
 

@@ -335,11 +335,13 @@ inferType' (List xs pos) = do
       _3 %= (Equal expected exprTy (UnexpectedType expected exprTy (Util.whereIs expr)) :)
       unifyEnv
       constraints <- use _3
-      let unifiedExpr = Util.mapTyKind (unify (reverse constraints)) expr
-      let unifiedPatterns = map (Util.mapTyKind (unify (reverse constraints))) patterns
+      env <- use _1
+      _1 .= HashMap.map (Util.flatEitherTy (negate 1)) env
+      let unifiedExpr = Util.mapTyKind (Util.flatEitherTy (negate 1) . unify (reverse constraints)) expr
+      let unifiedPatterns = map (Util.mapTyKind (Util.flatEitherTy (negate 1) . unify (reverse constraints))) patterns
       return (TyList
               (TyLit (SymLit "match") SymTy pos1:unifiedExpr:unifiedPatterns)
-              (unify (reverse constraints) retTy)
+              (Util.flatEitherTy (negate 1) (unify (reverse constraints) retTy))
               pos)
     Lit (SymLit "cond") pos1 -> do
       exprs <- mapM inferType' (tail xs)
@@ -367,7 +369,7 @@ inferType' (List xs pos) = do
       typedExprs <- mapM inferType' exprs
       let tys = map Util.typeof typedExprs
       i <- gensym
-      let ty = ObjectTy [i] (HashMap.fromList (zip propertyNames tys))
+      let ty = ObjectTy (HashSet.singleton i) (HashMap.fromList (zip propertyNames tys))
       return
         (TyList
           (TyLit (SymLit "object") SymTy pos1:concatMap (\(k1, (k,v)) -> [TyLit (SymLit k) SymTy (Util.whereIsAST k1),v]) (zip symbols (zip propertyNames typedExprs)))
@@ -381,7 +383,7 @@ inferType' (List xs pos) = do
       i <- gensym
       x <- gensym
       let typedProp = TyLit (SymLit propertyName) (VarTy x) pos2
-      let expected = ObjectTy [i] (HashMap.singleton propertyName (VarTy x))
+      let expected = ObjectTy (HashSet.singleton i) (HashMap.singleton propertyName (VarTy x))
       _3 %= (Equal expected exprTy (UnexpectedType expected exprTy (Util.whereIs typedExpr)) :)
       unifyEnv
       constraints <- use _3
@@ -455,7 +457,7 @@ subst i x (ArrTy y z) = ArrTy (subst i x y) (subst i x z)
 subst i x (ListTy xs) = ListTy (map (subst i x) xs)
 subst i x (EitherTy xs) = EitherTy (map (subst i x) xs)
 subst i x@(ObjectTy j ys) (ObjectTy k xs)
-  | elem i k = ObjectTy (j ++ k) (HashMap.union xs ys)
+  | HashSet.member i k = ObjectTy (HashSet.union j k) (HashMap.union xs ys)
   | otherwise = ObjectTy k (HashMap.map (subst i x) xs)
 subst i x (ObjectTy j xs) = ObjectTy j (HashMap.map (subst i x) xs)
 subst i x (MutableTy ty) = MutableTy (subst i x ty)
@@ -639,7 +641,7 @@ unify' (Equal s t absurd:c)
                     unify' (Subtype s t absurd:c)
                   else do
                     let (absurds, substitution) = unify' c
-                    (absurds, substitution . foldl (\f v -> subst v t . f) id k . foldl (\f v -> subst v s . f) id l)
+                    (absurds, substitution . foldl (\f v -> subst v t . f) id (HashSet.toList k) . foldl (\f v -> subst v s . f) id (HashSet.toList l))
               (RecTy _ s1, RecTy _ t1) -> do
                 unify' (Equal s1 t1 absurd:c)
               _ -> do

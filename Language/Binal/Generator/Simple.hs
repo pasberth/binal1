@@ -207,12 +207,13 @@ generateExpr (TyList (TyLit (SymLit "^") _ _:params:body:[]) _ _) = do
       let isVarArgs (RecTy _ _) = True
           isVarArgs (VarTy _) = True
           isVarArgs (EitherTy tys) = any isVarArgs tys
+          isVarArgs (ListTy []) = False
+          isVarArgs (ListTy tys) = isVarArgs (last tys)
           isVarArgs _ = False
 
       let lastParamTyAST = case params of
                             TyList xs _ _ -> last xs
                             x -> x
-
       if isVarArgs (Util.typeof lastParamTyAST)
         then do
           let initParams = init params'
@@ -288,6 +289,8 @@ generateExpr (TyList (f:args) _ _) = do
   let isVarArgs (RecTy _ _) = True
       isVarArgs (VarTy _) = True
       isVarArgs (EitherTy tys) = any isVarArgs tys
+      isVarArgs (ListTy []) = False
+      isVarArgs (ListTy tys) = isVarArgs (last tys)
       isVarArgs _ = False
 
   let godFunction1 this f' initArgs' lastArg' = do

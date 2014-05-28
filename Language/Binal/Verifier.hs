@@ -519,6 +519,17 @@ unify' (Subtype s t absurd:c)
                 unify' c
               (MutableTy s1, MutableTy t1) ->
                 unify' (Subtype s1 t1 absurd:c)
+              (EitherTy ss, _) -> do
+                let results = map (\s1 -> unify' [Subtype s1 t absurd]) ss
+                if all (\(absurds, _) -> null absurds) results
+                  then do
+                    let substitution = foldr (\(_, substitution1) substitution2 -> substitution1 . substitution2) id results
+                    let (absurds, substitution1) = unify' c
+                    (absurds, substitution1 . substitution)
+                  else do
+                    let (absurds, substitution) = unify' c
+                    let (absurds1, substitution1) = head results
+                    (absurds ++ absurds1, substitution . substitution1)
               (_, EitherTy ts) -> do
                 let results = map (\t1 -> unify' (Subtype s t1 absurd:c)) ts
                 let r = foldl1 (\(absurds1, substitution1) (absurds2, substitution2) ->

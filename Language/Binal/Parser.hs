@@ -34,23 +34,17 @@ withPosition p = do
     Nothing ->
       return (AtLine (fst start) (snd start) (fst end) (snd end) contents, x)
 
-letter :: T.Parser Char
-letter = T.oneOf "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-specialInitial :: T.Parser Char
-specialInitial = T.oneOf "!$%&*/:<=>?^_~.@+-'|"
-
-specialSubsequent :: T.Parser Char
-specialSubsequent = T.oneOf ""
+alphabet :: T.Parser Char
+alphabet = T.oneOf "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!$%&*/:<=>?^_~.@+-'|"
 
 digit :: T.Parser Char
 digit = T.oneOf "0123456789"
 
 initial :: T.Parser Char
-initial = letter <|> specialInitial
+initial = alphabet
 
 subsequent :: T.Parser Char
-subsequent = initial <|> digit <|> specialSubsequent
+subsequent = alphabet <|> digit
 
 symLit :: T.Parser AST
 symLit = do

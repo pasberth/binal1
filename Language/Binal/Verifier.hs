@@ -290,7 +290,7 @@ inferType' (List xs pos) = do
       let bodyTy = Util.typeof typedBody
       let patTy = Util.typeof typedPattern
       let absurd = UnexpectedType bodyTy patTy (Util.whereIs typedPattern)
-      _3 %= (Equal bodyTy patTy absurd :)
+      _3 %= (Subtype bodyTy patTy absurd :)
       unifyEnv
       constraints <- use _3
       let unifiedPattern = Util.mapTyKind (unify (reverse constraints)) typedPattern
@@ -310,7 +310,7 @@ inferType' (List xs pos) = do
       let bodyTy = Util.typeof typedBody
       let patTy = Util.typeof typedPattern
       let absurd = UnexpectedType bodyTy patTy (Util.whereIs typedPattern)
-      _3 %= (Equal bodyTy patTy absurd :)
+      _3 %= (Subtype bodyTy patTy absurd :)
       unifyEnv
       constraints <- use _3
       let unifiedBody = Util.mapTyKind (unify (reverse constraints)) typedBody
@@ -327,12 +327,12 @@ inferType' (List xs pos) = do
       forM_ (zip patterns syms) $ \(pat, (x, y)) -> do
         let patTy = Util.typeof pat
         let expected = ArrTy (VarTy x) (VarTy y)
-        _3 %= (Equal expected patTy (UnexpectedType expected patTy (Util.whereIs pat)) :)
+        _3 %= (Subtype patTy expected (UnexpectedType expected patTy (Util.whereIs pat)) :)
       let exprTy = Util.typeof expr
       let srcTys = map (\(x, _) -> VarTy x) syms
       let expected = EitherTy srcTys
       let retTy = EitherTy (map (\(_, y) -> VarTy y) syms)
-      _3 %= (Equal expected exprTy (UnexpectedType expected exprTy (Util.whereIs expr)) :)
+      _3 %= (Subtype exprTy expected (UnexpectedType expected exprTy (Util.whereIs expr)) :)
       unifyEnv
       constraints <- use _3
       env <- use _1

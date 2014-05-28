@@ -60,22 +60,6 @@ optimizeTailCallingToLoop name (TyList (TyLit (SymLit "cond") ty1 pos1:xs) ty2 p
               : concatMap (\(a,b) -> [a,b]) (zip ys zs1) ++ [z]) ty2 pos2
 optimizeTailCallingToLoop name it@(TyList ((TyLit (SymLit name1) _ pos1):args) ty2 pos2)
   | name == name1 = TyList (TyLit (SymLit "recur") SymTy pos1 : args) ty2 pos2
-                    {-case param of
-                      TyList params _ _
-                        | length params == length args
-                            -> TyList (TyLit (SymLit "seq") SymTy (Util.whereIs it)
-                                                : map (\(p,a) ->
-                                                        TyList
-                                                          [TyLit (SymLit ":=") SymTy (Util.whereIs a)
-                                                          , p
-                                                          , a
-                                                          ]
-                                                          (ListTy [])
-                                                          (Util.whereIs param))
-                                                          (zip params args)
-                                                ++ [Sym]) (ListTy []) (Util.whereIs param)
-                        | otherwise -> it
-                      _ -> it-}
   | otherwise = TyList [TyLit (SymLit "terminate") SymTy pos1, it] ty2 pos2
 optimizeTailCallingToLoop _ x = TyList [TyLit (SymLit "break") SymTy (Util.whereIs x), x] (Util.typeof x) (Util.whereIs x)
 

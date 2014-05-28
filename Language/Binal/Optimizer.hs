@@ -61,7 +61,7 @@ optimizeTailCallingToLoop name (TyList (TyLit (SymLit "cond") ty1 pos1:xs) ty2 p
 optimizeTailCallingToLoop name it@(TyList ((TyLit (SymLit name1) _ pos1):args) ty2 pos2)
   | name == name1 = TyList (TyLit (SymLit "recur") SymTy pos1 : args) ty2 pos2
   | otherwise = TyList [TyLit (SymLit "terminate") SymTy pos1, it] ty2 pos2
-optimizeTailCallingToLoop _ x = TyList [TyLit (SymLit "break") SymTy (Util.whereIs x), x] (Util.typeof x) (Util.whereIs x)
+optimizeTailCallingToLoop _ x = TyList [TyLit (SymLit "terminate") SymTy (Util.whereIs x), x] (Util.typeof x) (Util.whereIs x)
 
 optimizeTailCallingLambda :: String -> TypedAST -> TypedAST
 optimizeTailCallingLambda name (TyList (TyLit (SymLit "^") ty1 pos1:param:body:[]) ty2 pos2)

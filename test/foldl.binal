@@ -1,0 +1,19 @@
+(assume describe)
+(assume it)
+(let assert (. (require "chai") assert))
+
+(letrec foldl (^ (f x xs)
+  (match xs
+    (^ (y z) (foldl f (f x y) z))
+    (^ y (f x y)))))
+
+(let + (^ ns (foldl num.add 0 ns)))
+
+(describe "foldl" (^ () (seq
+  (describe "addition with variable arguments" (^ () (seq
+    (it "should accept 1 arguments" (^ ()
+      ((. assert equal) (+ 1) 1)))
+    (it "should accept 2 arguments" (^ ()
+      ((. assert equal) (+ 1 2) 3)))
+    (it "should accept 3 arguments" (^ ()
+      ((. assert equal) (+ 1 2 3) 6)))))))))

@@ -1,0 +1,5 @@
+(val describe (-> (string 'a) 'b))
+(val it (-> ("should be concatenated" (-> () 'a)) 'b))
+(val assert (obj equal (-> (string "abcdef") 'a)))
+(val + (-> (string string) string))
+(val desc (-> (string 'a) 'b))

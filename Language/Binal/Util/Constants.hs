@@ -17,6 +17,7 @@ keywords = HashSet.fromList
             , "object"
             , "assume"
             , "cond"
+            , "val"
             ]
 
 primitives :: HashSet.HashSet String

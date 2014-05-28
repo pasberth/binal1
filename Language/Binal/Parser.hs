@@ -38,10 +38,10 @@ letter :: T.Parser Char
 letter = T.oneOf "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 specialInitial :: T.Parser Char
-specialInitial = T.oneOf "!$%&*/:<=>?^_~.@'"
+specialInitial = T.oneOf "!$%&*/:<=>?^_~.@+-'"
 
 specialSubsequent :: T.Parser Char
-specialSubsequent = T.oneOf "+-"
+specialSubsequent = T.oneOf ""
 
 digit :: T.Parser Char
 digit = T.oneOf "0123456789"
@@ -75,7 +75,7 @@ list = do
   return (List xs pos)
 
 atom :: T.Parser AST
-atom = symLit <|> strLit <|> numLit
+atom = strLit <|> T.try numLit <|> symLit
 
 sexp :: T.Parser AST
 sexp = list <|> atom

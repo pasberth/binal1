@@ -1,0 +1,25 @@
+(assume describe)
+(assume it)
+(let assert (. (require "chai") assert))
+(let eq (^ x ((. assert deepEqual) x)))
+
+(let identity (^ x x))
+(let n-tuple identity)
+(let nil (n-tuple))
+(let pair (^ xs
+  (match xs
+    (^ (x y) (n-tuple x y))
+    (^ x x))))
+(letrec rev* (^ (xs a) (seq
+  (let id1 (identity (^ z z)))
+  (match xs
+    (^ (x y) (rev* y (pair (id1 x) a)))
+    (^ x (pair (id1 x) a))))))
+(letrec rev (^ xs
+  (match xs
+    (^ (x y) (rev* y x))
+    (^ x x))))
+
+(describe "rev" (^ () (seq
+  (it "reverses 3 argument" (^ ()
+    (eq (rev 1 2 3) (n-tuple 3 2 1) nil))))))

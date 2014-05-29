@@ -421,9 +421,8 @@ generateMatching (ListTy xs) jast = do
   let conds = map (\(x, i) ->
                 generateMatching x (ComputedMemberJSAST (MemberJSAST jast "xs") (NumLitJSAST (realToFrac i))))
                 (zip (init xs) ([0..] :: [Int]))
-  let sliceCall = CallJSAST (MemberJSAST (MemberJSAST jast "xs") "slice") [NumLitJSAST (realToFrac (length xs - 1))]
   let lastGet = ComputedMemberJSAST (MemberJSAST jast "xs") (NumLitJSAST (realToFrac (length xs - 1)))
-  let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (MemberJSAST jast "xs") "length") (NumLitJSAST (realToFrac (length xs)))) lastGet (CallJSAST (MemberJSAST (IdentJSAST "Binal") "mkTuple") [sliceCall])
+  let lastCheck = CondJSAST (BinaryJSAST "===" (MemberJSAST (MemberJSAST jast "xs") "length") (NumLitJSAST (realToFrac (length xs)))) lastGet (IdentJSAST "true")
   let cond1 = generateMatching (last xs) lastCheck
   BinaryJSAST "&&" (BinaryJSAST "instanceof" jast (MemberJSAST (IdentJSAST "Binal") "Tuple")) (foldr (BinaryJSAST "&&") cond1 conds)
 generateMatching (VarTy _) jast = jast

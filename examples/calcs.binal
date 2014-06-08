@@ -1,0 +1,7 @@
+(let S (^ x (^ y (^ z ((x z) (y z))))))
+(let K (^ x (^ y x)))
+(let I ((S K) K))
+(let B ((S (K S)) K))
+(let C ((S ((S (K ((S (K S)) K))) S)) (K K)))
+(let W ((S S) (S K)))
+(let Y (^ f ((^ x (f (x x))) (^ x (f (x x))))))
